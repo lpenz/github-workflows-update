@@ -2,10 +2,10 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
-use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
-use futures::future::try_join_all;
+use futures::future::join_all;
+use std::path;
 use tokio::io::AsyncReadExt;
 use tokio_stream::wrappers::ReadDirStream;
 use tokio_stream::StreamExt;
@@ -15,32 +15,38 @@ use entity::Entity;
 
 pub mod workflow;
 
-pub async fn workflow_process(filename: tokio::fs::DirEntry) -> Result<Vec<Entity>> {
-    let filename = filename.path();
-    let mut file = tokio::fs::File::open(&filename).await?;
+pub async fn workflow_process(filename: impl AsRef<path::Path>) -> Result<Vec<Entity>> {
+    let mut file = tokio::fs::File::open(filename).await?;
     let mut contents = vec![];
     file.read_to_end(&mut contents).await?;
-    workflow::buf_parse(&*contents)
-        .with_context(|| format!("error parsing {}", &filename.display()))
+    workflow::buf_parse(&*contents).context("parse error")
 }
 
 pub async fn main() -> Result<()> {
     let futures = ReadDirStream::new(tokio::fs::read_dir(".github/workflows").await?)
-        .map(|filename| async {
-            if let Ok(filename) = filename {
-                workflow_process(filename).await
-            } else {
-                Err(anyhow!("error getting filename"))
+        .filter_map(|filename| match filename {
+            Ok(filename) => Some(filename.path()),
+            Err(e) => {
+                eprintln!("{}", e);
+                None
             }
+        })
+        .map(move |filename| async {
+            let entities = workflow_process(&filename).await;
+            (filename, entities)
         })
         .collect::<Vec<_>>()
         .await;
-    let entities = try_join_all(futures).await?;
-    for entity in entities.iter().flatten() {
-        println!(
-            "job {} uses {} version {}",
-            entity.job, entity.resource, entity.version
-        );
+    let file_entities = join_all(futures).await;
+    for (filename, result) in file_entities.iter() {
+        match result {
+            Ok(entities) => {
+                println!("{}: {:?}", filename.display(), entities);
+            }
+            Err(error) => {
+                println!("{}: {:#}", filename.display(), error);
+            }
+        }
     }
     Ok(())
 }
