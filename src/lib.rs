@@ -41,15 +41,27 @@ pub async fn do_process_file(filename: impl AsRef<path::Path>) -> Result<()> {
     .await
     .into_iter()
     .collect::<HashMap<_, _>>();
-    for e in &entities {
-        if let Some(Ok(new_version)) = versions.get(e.resource.as_str()) {
-            if new_version > &e.version {
+    for entity in &entities {
+        match versions.get(entity.resource.as_str()) {
+            Some(Ok(new_version)) => {
+                if new_version > &entity.version {
+                    println!(
+                        "{} {} {} -> {}",
+                        filename.display(),
+                        entity.resource,
+                        entity.version,
+                        new_version
+                    );
+                }
+            }
+            Some(Err(ref err)) => {
+                println!("{} {} -> {:#}", filename.display(), entity.resource, err);
+            }
+            None => {
                 println!(
-                    "{} {} {} -> {}",
+                    "{} {} -> latest version not found",
                     filename.display(),
-                    e.resource,
-                    e.version,
-                    new_version
+                    entity.resource
                 );
             }
         }
