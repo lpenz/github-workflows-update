@@ -29,18 +29,19 @@ pub async fn workflow_process(filename: impl AsRef<path::Path>) -> Result<Vec<En
 pub async fn do_process_file(filename: impl AsRef<path::Path>) -> Result<()> {
     let filename = filename.as_ref();
     let entities = workflow_process(filename).await?;
+    let resolver = vers::resolver::Server::new();
     let resources = entities
         .iter()
         .map(|e| e.resource.as_str())
         .collect::<HashSet<_>>();
-    let versions = join_all(
-        resources
-            .into_iter()
-            .map(|r| async move { (r, vers::discover_latest_version(r).await) }),
-    )
-    .await
-    .into_iter()
-    .collect::<HashMap<_, _>>();
+    let version_tasks = resources
+        .into_iter()
+        .map(|r| (r, resolver.new_client()))
+        .map(|(r, resolver)| async move { (r, vers::discover_latest_version(resolver, r).await) });
+    let versions = join_all(version_tasks)
+        .await
+        .into_iter()
+        .collect::<HashMap<_, _>>();
     for entity in &entities {
         match versions.get(entity.resource.as_str()) {
             Some(Ok(new_version)) => {

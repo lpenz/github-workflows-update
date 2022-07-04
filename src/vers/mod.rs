@@ -8,9 +8,14 @@ use versions::Version;
 
 pub mod docker;
 
-pub async fn discover_latest_version(resource: &str) -> Result<Version> {
+pub mod resolver;
+
+pub async fn discover_latest_version(
+    resolver: resolver::Client,
+    resource: &str,
+) -> Result<Version> {
     if let Some(path) = resource.strip_prefix("docker://") {
-        docker::docker_latest_version(path).await
+        docker::docker_latest_version(resolver, path).await
     } else {
         Err(anyhow!("error parsing resource type for {:?}", resource))
     }
