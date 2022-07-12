@@ -3,15 +3,30 @@
 // file 'LICENSE', which is part of this source code package.
 
 use anyhow::anyhow;
+use anyhow::ensure;
 use anyhow::Context;
 use anyhow::Result;
 use versions::Version;
 
-use crate::vers::resolver;
+pub fn url(resource: &str) -> Option<String> {
+    resource.strip_prefix("docker://").map(|path| {
+        format!(
+            "https://registry.hub.docker.com/v1/repositories/{}/tags",
+            path
+        )
+    })
+}
 
-async fn get_json(resolver: resolver::Client, url: &str) -> Result<serde_json::Value> {
-    let json = resolver.request(String::from(url)).await?;
-    Ok(json)
+async fn get_json(url: &str) -> Result<serde_json::Value> {
+    let response = reqwest::get(url).await?;
+    ensure!(
+        response.status().is_success(),
+        anyhow!(format!("{} while getting {}", response.status(), url))
+    );
+    response
+        .json::<serde_json::Value>()
+        .await
+        .with_context(|| format!("error parsing json in {}", url))
 }
 
 fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
@@ -34,12 +49,8 @@ fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
         .collect::<Result<Vec<Version>>>()
 }
 
-pub async fn docker_latest_version(resolver: resolver::Client, path: &str) -> Result<Version> {
-    let url = format!(
-        "https://registry.hub.docker.com/v1/repositories/{}/tags",
-        path
-    );
-    let data = get_json(resolver, &url).await?;
+pub async fn get_latest_version(url: &str) -> Result<Version> {
+    let data = get_json(url).await?;
     let versions =
         parse_versions(data).with_context(|| format!("error processing json from {}", url))?;
     let latest = versions

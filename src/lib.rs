@@ -37,7 +37,9 @@ pub async fn do_process_file(filename: impl AsRef<path::Path>) -> Result<()> {
     let version_tasks = resources
         .into_iter()
         .map(|r| (r, resolver.new_client()))
-        .map(|(r, resolver)| async move { (r, vers::discover_latest_version(resolver, r).await) });
+        .map(
+            |(r, resolver_client)| async move { (r, resolver_client.get_latest_version(r).await) },
+        );
     let versions = join_all(version_tasks)
         .await
         .into_iter()
