@@ -4,23 +4,61 @@
 
 use anyhow::anyhow;
 use anyhow::Result;
+use tokio::sync::mpsc;
+use tokio::sync::oneshot;
 use versions::Version;
 
 use crate::vers::docker;
 
 #[derive(Debug)]
-pub struct Server {}
+pub struct Server {
+    server_ch: mpsc::Sender<Message>,
+}
 
 #[derive(Debug)]
-pub struct Client {}
+pub struct Client {
+    server_ch: mpsc::Sender<Message>,
+}
+
+#[derive(Debug)]
+pub enum Message {
+    Request {
+        resource: String,
+        client_ch: oneshot::Sender<Result<Version>>,
+    },
+}
 
 impl Server {
     pub fn new() -> Server {
-        Server {}
+        let (server_ch, mut queue): (mpsc::Sender<Message>, mpsc::Receiver<Message>) =
+            mpsc::channel(32);
+        tokio::spawn(async move {
+            while let Some(msg) = queue.recv().await {
+                match msg {
+                    Message::Request {
+                        resource,
+                        client_ch,
+                    } => Server::handle_request(&resource, client_ch).await,
+                }
+            }
+        });
+        Server { server_ch }
+    }
+
+    async fn handle_request(resource: &str, client_ch: oneshot::Sender<Result<Version>>) {
+        client_ch
+            .send(if let Some(url) = docker::url(resource) {
+                docker::get_latest_version(&url).await
+            } else {
+                Err(anyhow!("could not parse resource"))
+            })
+            .expect("client_ch send error");
     }
 
     pub fn new_client(&self) -> Client {
-        Client {}
+        Client {
+            server_ch: self.server_ch.clone(),
+        }
     }
 }
 
@@ -32,10 +70,13 @@ impl Default for Server {
 
 impl Client {
     pub async fn get_latest_version(&self, resource: &str) -> Result<Version> {
-        if let Some(url) = docker::url(resource) {
-            docker::get_latest_version(&url).await
-        } else {
-            Err(anyhow!("could not parse resource"))
-        }
+        let (client_ch, response) = oneshot::channel();
+        self.server_ch
+            .send(Message::Request {
+                resource: resource.to_owned(),
+                client_ch,
+            })
+            .await?;
+        response.await?
     }
 }
