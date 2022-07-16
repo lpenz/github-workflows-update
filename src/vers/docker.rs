@@ -6,8 +6,10 @@ use anyhow::anyhow;
 use anyhow::ensure;
 use anyhow::Context;
 use anyhow::Result;
+use tracing::instrument;
 use versions::Version;
 
+#[instrument]
 pub fn url(resource: &str) -> Option<String> {
     resource.strip_prefix("docker://").map(|path| {
         format!(
@@ -17,6 +19,7 @@ pub fn url(resource: &str) -> Option<String> {
     })
 }
 
+#[instrument]
 async fn get_json(url: &str) -> Result<serde_json::Value> {
     let response = reqwest::get(url).await?;
     ensure!(
@@ -29,6 +32,7 @@ async fn get_json(url: &str) -> Result<serde_json::Value> {
         .with_context(|| format!("error parsing json in {}", url))
 }
 
+#[instrument]
 fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
     data.as_array()
         .ok_or_else(|| anyhow!("invalid type for layer object list"))?
@@ -49,6 +53,7 @@ fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
         .collect::<Result<Vec<Version>>>()
 }
 
+#[instrument]
 pub async fn get_latest_version(url: &str) -> Result<Version> {
     let data = get_json(url).await?;
     let versions =

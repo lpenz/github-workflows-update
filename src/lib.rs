@@ -11,6 +11,7 @@ use std::path;
 use tokio::io::AsyncReadExt;
 use tokio_stream::wrappers::ReadDirStream;
 use tokio_stream::StreamExt;
+use tracing::instrument;
 
 pub mod entity;
 use entity::Entity;
@@ -19,6 +20,7 @@ pub mod workflow;
 
 pub mod vers;
 
+#[instrument(fields(filename = ?filename.as_ref().display()))]
 pub async fn workflow_process(filename: impl AsRef<path::Path>) -> Result<Vec<Entity>> {
     let mut file = tokio::fs::File::open(filename).await?;
     let mut contents = vec![];
@@ -26,6 +28,7 @@ pub async fn workflow_process(filename: impl AsRef<path::Path>) -> Result<Vec<En
     workflow::buf_parse(&*contents).context("parse error")
 }
 
+#[instrument(fields(filename = ?filename.as_ref().display()))]
 pub async fn do_process_file(filename: impl AsRef<path::Path>) -> Result<()> {
     let filename = filename.as_ref();
     let entities = workflow_process(filename).await?;
@@ -72,6 +75,7 @@ pub async fn do_process_file(filename: impl AsRef<path::Path>) -> Result<()> {
     Ok(())
 }
 
+#[instrument]
 pub async fn process_file(filename: path::PathBuf) {
     if let Err(err) = do_process_file(&filename).await {
         eprintln!("{}: {:#}", filename.display(), err)
@@ -79,6 +83,7 @@ pub async fn process_file(filename: path::PathBuf) {
 }
 
 pub async fn main() -> Result<()> {
+    env_logger::init();
     let futures = ReadDirStream::new(tokio::fs::read_dir(".github/workflows").await?)
         .filter_map(|filename| match filename {
             Ok(filename) => Some(filename.path()),
