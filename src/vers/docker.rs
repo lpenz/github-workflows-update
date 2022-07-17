@@ -37,7 +37,7 @@ impl updater::Updater for Docker {
     }
 }
 
-#[instrument]
+#[instrument(level = "debug")]
 pub fn url(resource: &str) -> Option<String> {
     resource.strip_prefix("docker://").map(|path| {
         format!(
@@ -47,7 +47,7 @@ pub fn url(resource: &str) -> Option<String> {
     })
 }
 
-#[instrument]
+#[instrument(level = "debug")]
 async fn get_json(url: &str) -> Result<serde_json::Value> {
     let response = reqwest::get(url).await?;
     ensure!(
@@ -60,7 +60,7 @@ async fn get_json(url: &str) -> Result<serde_json::Value> {
         .with_context(|| format!("error parsing json in {}", url))
 }
 
-#[instrument]
+#[instrument(level = "debug")]
 fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
     data.as_array()
         .ok_or_else(|| anyhow!("invalid type for layer object list"))?
@@ -81,7 +81,7 @@ fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
         .collect::<Result<Vec<Version>>>()
 }
 
-#[instrument]
+#[instrument(level = "debug")]
 pub async fn get_versions(url: &str) -> Result<Vec<Version>> {
     let data = get_json(url).await?;
     let versions =

@@ -9,7 +9,9 @@ use std::io;
 use std::path;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
+use tracing::event;
 use tracing::instrument;
+use tracing::Level;
 use versions::Version;
 
 use crate::entity::Entity;
@@ -23,7 +25,7 @@ pub struct Workflow {
 }
 
 impl Workflow {
-    #[instrument(fields(filename = ?filename.as_ref().display()))]
+    #[instrument(level="debug", fields(filename = ?filename.as_ref().display()))]
     pub async fn new(filename: impl AsRef<path::Path>) -> Result<Workflow> {
         let filename = filename.as_ref();
         let mut file = tokio::fs::File::open(filename).await?;
@@ -37,6 +39,7 @@ impl Workflow {
         })
     }
 
+    #[instrument(level = "debug")]
     pub async fn resolve_entities(&mut self, resolver: &vers::resolver::Server) {
         let entities = std::mem::take(&mut self.entities);
         let resolve_entity_tasks = entities
@@ -49,6 +52,7 @@ impl Workflow {
             .collect::<Vec<_>>();
     }
 
+    #[instrument(level = "debug")]
     pub async fn update_file(&self) -> Result<bool> {
         let mut contents = self.contents.clone();
         for entity in &self.entities {
@@ -72,7 +76,8 @@ macro_rules! regex {
     }};
 }
 
-pub fn reference_parse_version(reference: &str) -> Option<(String, Version)> {
+#[instrument(level = "debug")]
+fn reference_parse_version(reference: &str) -> Option<(String, Version)> {
     let re_docker = regex!(r"^(?P<resource>docker://[^:]+):v?(?P<version>[0-9.]+)$");
     let m = re_docker.captures(reference)?;
     Some((
@@ -81,7 +86,8 @@ pub fn reference_parse_version(reference: &str) -> Option<(String, Version)> {
     ))
 }
 
-pub fn buf_parse(r: impl io::BufRead) -> Result<Vec<Entity>> {
+#[instrument(level = "debug", skip(r))]
+fn buf_parse(r: impl io::BufRead) -> Result<Vec<Entity>> {
     let data: serde_yaml::Mapping = serde_yaml::from_reader(r)?;
     let jobs = data
         .get(&Value::String("jobs".into()))
@@ -103,14 +109,17 @@ pub fn buf_parse(r: impl io::BufRead) -> Result<Vec<Entity>> {
                         .as_str()
                         .ok_or_else(|| anyhow!("invalid type for uses entry"))?;
                     if let Some((resource, version)) = reference_parse_version(reference) {
-                        let v = Entity {
+                        let entity = Entity {
                             job: String::from(jobname),
                             line: reference.into(),
                             resource,
                             version,
                             ..Default::default()
                         };
-                        ret.push(v);
+                        event!(Level::INFO, reference = reference, "parsed entity");
+                        ret.push(entity);
+                    } else {
+                        event!(Level::WARN, reference = reference, "entity not parsed");
                     }
                 }
             }

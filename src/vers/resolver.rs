@@ -32,7 +32,7 @@ pub enum Message {
 }
 
 impl Server {
-    #[instrument]
+    #[instrument(level = "debug")]
     pub fn new() -> Server {
         let (server_ch, mut queue): (mpsc::Sender<Message>, mpsc::Receiver<Message>) =
             mpsc::channel(32);
@@ -50,7 +50,7 @@ impl Server {
         Server { server_ch }
     }
 
-    #[instrument]
+    #[instrument(level = "debug")]
     async fn handle_request(resource: &str, client_ch: oneshot::Sender<Result<Vec<Version>>>) {
         let updater = match updater_for(resource) {
             Ok(updater) => updater,
@@ -79,7 +79,7 @@ impl Server {
         client_ch.send(updater.get_versions(&url).await).unwrap();
     }
 
-    #[instrument]
+    #[instrument(level = "debug")]
     pub fn new_client(&self) -> Client {
         Client {
             server_ch: self.server_ch.clone(),
@@ -94,7 +94,7 @@ impl Default for Server {
 }
 
 impl Client {
-    #[instrument]
+    #[instrument(level = "debug")]
     pub async fn get_versions(&self, resource: &str) -> Result<Vec<Version>> {
         let (client_ch, response) = oneshot::channel();
         self.server_ch
@@ -106,7 +106,7 @@ impl Client {
         response.await?
     }
 
-    #[instrument]
+    #[instrument(level = "debug")]
     pub async fn resolve_entity(&self, mut entity: Entity) -> Entity {
         let versions = match self.get_versions(&entity.resource).await {
             Ok(versions) => versions,

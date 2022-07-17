@@ -18,7 +18,7 @@ use workflow::Workflow;
 
 pub mod vers;
 
-#[instrument(fields(filename = ?filename.as_ref().display()))]
+#[instrument(level="info", fields(filename = ?filename.as_ref().display()))]
 pub async fn process_file(inplace: bool, filename: impl AsRef<path::Path>) {
     let filename = filename.as_ref();
     let mut workflow = match Workflow::new(filename).await {

@@ -16,7 +16,7 @@ pub fn updater_for(resource: &str) -> Result<impl updater::Updater> {
     if let Some(_url) = docker::url(resource) {
         Ok(docker::Docker::default())
     } else {
-        Err(anyhow!("no updater found for {}", resource))
+        Err(anyhow!("no updater found"))
     }
 }
 
