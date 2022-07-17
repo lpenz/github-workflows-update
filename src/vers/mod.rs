@@ -2,11 +2,23 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
+use anyhow::anyhow;
+use anyhow::Result;
 use versions::Version;
+
+pub mod updater;
 
 pub mod docker;
 
 pub mod resolver;
+
+pub fn updater_for(resource: &str) -> Result<impl updater::Updater> {
+    if let Some(_url) = docker::url(resource) {
+        Ok(docker::Docker::default())
+    } else {
+        Err(anyhow!("no updater found for {}", resource))
+    }
+}
 
 /// Wrapper that prints a vector of versions using the default version formatter
 pub struct Versions<'a> {

@@ -9,7 +9,8 @@ use tracing::{event, instrument, Level};
 use versions::Version;
 
 use crate::entity::Entity;
-use crate::vers::docker;
+use crate::vers::updater::Updater;
+use crate::vers::updater_for;
 use crate::vers::Versions;
 
 #[derive(Debug)]
@@ -51,9 +52,31 @@ impl Server {
 
     #[instrument]
     async fn handle_request(resource: &str, client_ch: oneshot::Sender<Result<Vec<Version>>>) {
-        if let Some(url) = docker::url(resource) {
-            client_ch.send(docker::get_versions(&url).await).unwrap();
-        }
+        let updater = match updater_for(resource) {
+            Ok(updater) => updater,
+            Err(e) => {
+                event!(
+                    Level::ERROR,
+                    resource = resource,
+                    error = %e,
+                    "error getting updater",
+                );
+                return;
+            }
+        };
+        let url = match updater.url(resource) {
+            Some(url) => url,
+            None => {
+                event!(
+                    Level::ERROR,
+                    resource = resource,
+                    updater = ?updater,
+                    "updater could not parse url",
+                );
+                return;
+            }
+        };
+        client_ch.send(updater.get_versions(&url).await).unwrap();
     }
 
     #[instrument]

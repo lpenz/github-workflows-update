@@ -3,11 +3,51 @@
 // file 'LICENSE', which is part of this source code package.
 
 use anyhow::{anyhow, Result};
+use futures::future::join_all;
 use serde_yaml::Value;
 use std::io;
+use std::path;
+use tokio::io::AsyncReadExt;
+use tracing::instrument;
 use versions::Version;
 
 use crate::entity::Entity;
+use crate::vers;
+
+#[derive(Debug)]
+pub struct Workflow {
+    pub filename: path::PathBuf,
+    pub contents: String,
+    pub entities: Vec<Entity>,
+}
+
+impl Workflow {
+    #[instrument(fields(filename = ?filename.as_ref().display()))]
+    pub async fn new(filename: impl AsRef<path::Path>) -> Result<Workflow> {
+        let filename = filename.as_ref();
+        let mut file = tokio::fs::File::open(filename).await?;
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).await?;
+        let entities = buf_parse(contents.as_bytes())?;
+        Ok(Workflow {
+            filename: filename.to_owned(),
+            contents,
+            entities,
+        })
+    }
+
+    pub async fn resolve_entities(&mut self, resolver: &vers::resolver::Server) {
+        let entities = std::mem::take(&mut self.entities);
+        let resolve_entity_tasks = entities
+            .into_iter()
+            .map(|e| (e, resolver.new_client()))
+            .map(|(e, resolver_client)| async move { resolver_client.resolve_entity(e).await });
+        self.entities = join_all(resolve_entity_tasks)
+            .await
+            .into_iter()
+            .collect::<Vec<_>>();
+    }
+}
 
 macro_rules! regex {
     ($re:literal $(,)?) => {{
@@ -49,7 +89,7 @@ pub fn buf_parse(r: impl io::BufRead) -> Result<Vec<Entity>> {
                     if let Some((resource, version)) = reference_parse_version(reference) {
                         let v = Entity {
                             job: String::from(jobname),
-                            reference: reference.into(),
+                            line: reference.into(),
                             resource,
                             version,
                             ..Default::default()

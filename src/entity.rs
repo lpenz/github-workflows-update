@@ -10,7 +10,7 @@ pub struct Entity {
     /// Workflow job
     pub job: String,
     /// The whole entity-describing string
-    pub reference: String,
+    pub line: String,
     /// The resource part - `reference` without the version
     pub resource: String,
     /// The current version

@@ -6,12 +6,28 @@ use anyhow::anyhow;
 use anyhow::ensure;
 use anyhow::Context;
 use anyhow::Result;
+use async_trait::async_trait;
 use tracing::event;
 use tracing::instrument;
 use tracing::Level;
 use versions::Version;
 
+use crate::vers::updater;
 use crate::vers::Versions;
+
+#[derive(Debug, Default)]
+pub struct Docker {}
+
+#[async_trait]
+impl updater::Updater for Docker {
+    fn url(&self, resource: &str) -> Option<String> {
+        url(resource)
+    }
+
+    async fn get_versions(&self, url: &str) -> Result<Vec<Version>> {
+        get_versions(url).await
+    }
+}
 
 #[instrument]
 pub fn url(resource: &str) -> Option<String> {
