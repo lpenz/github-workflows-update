@@ -9,9 +9,9 @@ use tracing::{event, instrument, Level};
 use versions::Version;
 
 use crate::entity::Entity;
-use crate::vers::updater::Updater;
-use crate::vers::updater_for;
-use crate::vers::Versions;
+use crate::prettyvers;
+use crate::updater::updater_for;
+use crate::updater::Updater;
 
 #[derive(Debug)]
 pub struct Server {
@@ -124,7 +124,7 @@ impl Client {
             event!(
                 Level::ERROR,
                 resource = entity.resource,
-                versions = ?Versions::new(&versions),
+                versions = ?prettyvers::Versions::new(&versions),
                 "no version found",
             );
             return entity;
@@ -133,7 +133,7 @@ impl Client {
                 Level::WARN,
                 resource = entity.resource,
                 current = %entity.version,
-                versions = ?Versions::new(&versions),
+                versions = ?prettyvers::Versions::new(&versions),
                 "current version not present in version list",
             );
         }
@@ -141,7 +141,7 @@ impl Client {
         event!(
             Level::INFO,
             resource = entity.resource,
-            versions = ?Versions::new(&versions),
+            versions = ?prettyvers::Versions::new(&versions),
             latest = %latest,
             "got versions",
         );

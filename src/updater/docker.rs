@@ -13,8 +13,8 @@ use tracing::Level;
 use versions::Version;
 
 use crate::entity::Entity;
-use crate::vers::updater;
-use crate::vers::Versions;
+use crate::prettyvers;
+use crate::updater;
 
 #[derive(Debug, Default)]
 pub struct Docker {}
@@ -88,7 +88,7 @@ pub async fn get_versions(url: &str) -> Result<Vec<Version>> {
         parse_versions(data).with_context(|| format!("error processing json from {}", url))?;
     event!(
         Level::INFO,
-        versions = ?Versions::new(&versions),
+        versions = ?prettyvers::Versions::new(&versions),
         "parsed versions"
     );
     Ok(versions)

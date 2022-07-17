@@ -15,7 +15,7 @@ use tracing::Level;
 use versions::Version;
 
 use crate::entity::Entity;
-use crate::vers;
+use crate::resolver;
 
 #[derive(Debug)]
 pub struct Workflow {
@@ -40,7 +40,7 @@ impl Workflow {
     }
 
     #[instrument(level = "debug")]
-    pub async fn resolve_entities(&mut self, resolver: &vers::resolver::Server) {
+    pub async fn resolve_entities(&mut self, resolver: &resolver::Server) {
         let entities = std::mem::take(&mut self.entities);
         let resolve_entity_tasks = entities
             .into_iter()

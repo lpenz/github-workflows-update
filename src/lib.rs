@@ -16,7 +16,11 @@ pub mod entity;
 pub mod workflow;
 use workflow::Workflow;
 
-pub mod vers;
+pub mod updater;
+
+pub mod resolver;
+
+pub mod prettyvers;
 
 #[instrument(level="info", fields(filename = ?filename.as_ref().display()))]
 pub async fn process_file(inplace: bool, filename: impl AsRef<path::Path>) {
@@ -32,7 +36,7 @@ pub async fn process_file(inplace: bool, filename: impl AsRef<path::Path>) {
             return;
         }
     };
-    let resolver = vers::resolver::Server::new();
+    let resolver = resolver::Server::new();
     workflow.resolve_entities(&resolver).await;
     for entity in &workflow.entities {
         if let Some(ref latest) = entity.latest {
