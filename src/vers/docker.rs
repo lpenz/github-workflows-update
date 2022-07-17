@@ -12,6 +12,7 @@ use tracing::instrument;
 use tracing::Level;
 use versions::Version;
 
+use crate::entity::Entity;
 use crate::vers::updater;
 use crate::vers::Versions;
 
@@ -26,6 +27,13 @@ impl updater::Updater for Docker {
 
     async fn get_versions(&self, url: &str) -> Result<Vec<Version>> {
         get_versions(url).await
+    }
+
+    fn updated_line(&self, entity: &Entity) -> Option<String> {
+        entity
+            .latest
+            .as_ref()
+            .map(|v| format!("{}:{}", entity.resource, v))
     }
 }
 

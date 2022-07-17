@@ -17,4 +17,6 @@ pub struct Entity {
     pub version: Version,
     /// The latest version
     pub latest: Option<Version>,
+    /// The updated entity-describing string
+    pub updated_line: Option<String>,
 }

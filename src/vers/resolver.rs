@@ -146,6 +146,9 @@ impl Client {
             "got versions",
         );
         entity.latest = Some(latest.clone());
+        if let Ok(updater) = updater_for(&entity.resource) {
+            entity.updated_line = updater.updated_line(&entity);
+        }
         entity
     }
 }
