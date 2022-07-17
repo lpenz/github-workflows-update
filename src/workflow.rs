@@ -2,7 +2,7 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{anyhow, Result};
 use serde_yaml::Value;
 use std::io;
 use versions::Version;
@@ -26,8 +26,7 @@ pub fn reference_parse_version(reference: &str) -> Option<(String, Version)> {
 }
 
 pub fn buf_parse(r: impl io::BufRead) -> Result<Vec<Entity>> {
-    let data: serde_yaml::Mapping =
-        serde_yaml::from_reader(r).with_context(|| anyhow!("error in serde_yaml"))?;
+    let data: serde_yaml::Mapping = serde_yaml::from_reader(r)?;
     let jobs = data
         .get(&Value::String("jobs".into()))
         .ok_or_else(|| anyhow!("jobs entry not found"))?
@@ -53,6 +52,7 @@ pub fn buf_parse(r: impl io::BufRead) -> Result<Vec<Entity>> {
                             reference: reference.into(),
                             resource,
                             version,
+                            ..Default::default()
                         };
                         ret.push(v);
                     }

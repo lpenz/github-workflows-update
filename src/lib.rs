@@ -2,16 +2,15 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
-use anyhow::Context;
 use anyhow::Result;
 use futures::future::join_all;
-use std::collections::HashMap;
-use std::collections::HashSet;
 use std::path;
 use tokio::io::AsyncReadExt;
 use tokio_stream::wrappers::ReadDirStream;
 use tokio_stream::StreamExt;
+use tracing::event;
 use tracing::instrument;
+use tracing::Level;
 
 pub mod entity;
 use entity::Entity;
@@ -25,60 +24,44 @@ pub async fn workflow_process(filename: impl AsRef<path::Path>) -> Result<Vec<En
     let mut file = tokio::fs::File::open(filename).await?;
     let mut contents = vec![];
     file.read_to_end(&mut contents).await?;
-    workflow::buf_parse(&*contents).context("parse error")
+    workflow::buf_parse(&*contents)
 }
 
 #[instrument(fields(filename = ?filename.as_ref().display()))]
-pub async fn do_process_file(filename: impl AsRef<path::Path>) -> Result<()> {
+pub async fn process_file(filename: impl AsRef<path::Path>) {
     let filename = filename.as_ref();
-    let entities = workflow_process(filename).await?;
+    let entities = match workflow_process(filename).await {
+        Ok(entities) => entities,
+        Err(e) => {
+            event!(
+                Level::ERROR,
+                error = ?e,
+                filename = ?filename,
+            );
+            return;
+        }
+    };
     let resolver = vers::resolver::Server::new();
-    let resources = entities
-        .iter()
-        .map(|e| e.resource.as_str())
-        .collect::<HashSet<_>>();
-    let version_tasks = resources
+    let resolve_entity_tasks = entities
         .into_iter()
-        .map(|r| (r, resolver.new_client()))
-        .map(
-            |(r, resolver_client)| async move { (r, resolver_client.get_latest_version(r).await) },
-        );
-    let versions = join_all(version_tasks)
+        .map(|e| (e, resolver.new_client()))
+        .map(|(e, resolver_client)| async move { resolver_client.resolve_entity(e).await });
+    let entities = join_all(resolve_entity_tasks)
         .await
         .into_iter()
-        .collect::<HashMap<_, _>>();
+        .collect::<Vec<_>>();
     for entity in &entities {
-        match versions.get(entity.resource.as_str()) {
-            Some(Ok(new_version)) => {
-                if new_version > &entity.version {
-                    println!(
-                        "{} {} {} -> {}",
-                        filename.display(),
-                        entity.resource,
-                        entity.version,
-                        new_version
-                    );
-                }
-            }
-            Some(Err(ref err)) => {
-                println!("{} {} -> {:#}", filename.display(), entity.resource, err);
-            }
-            None => {
+        if let Some(ref latest) = entity.latest {
+            if &entity.version != latest {
                 println!(
-                    "{} {} -> latest version not found",
+                    "{} {} {} -> {}",
                     filename.display(),
-                    entity.resource
+                    entity.resource,
+                    entity.version,
+                    latest
                 );
             }
         }
-    }
-    Ok(())
-}
-
-#[instrument]
-pub async fn process_file(filename: path::PathBuf) {
-    if let Err(err) = do_process_file(&filename).await {
-        eprintln!("{}: {:#}", filename.display(), err)
     }
 }
 

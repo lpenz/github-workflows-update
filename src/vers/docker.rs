@@ -6,8 +6,12 @@ use anyhow::anyhow;
 use anyhow::ensure;
 use anyhow::Context;
 use anyhow::Result;
+use tracing::event;
 use tracing::instrument;
+use tracing::Level;
 use versions::Version;
+
+use crate::vers::Versions;
 
 #[instrument]
 pub fn url(resource: &str) -> Option<String> {
@@ -54,15 +58,16 @@ fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
 }
 
 #[instrument]
-pub async fn get_latest_version(url: &str) -> Result<Version> {
+pub async fn get_versions(url: &str) -> Result<Vec<Version>> {
     let data = get_json(url).await?;
     let versions =
         parse_versions(data).with_context(|| format!("error processing json from {}", url))?;
-    let latest = versions
-        .into_iter()
-        .max()
-        .ok_or_else(|| anyhow!("no versions found"))?;
-    Ok(latest)
+    event!(
+        Level::INFO,
+        versions = ?Versions::new(&versions),
+        "parsed versions"
+    );
+    Ok(versions)
 }
 
 #[test]

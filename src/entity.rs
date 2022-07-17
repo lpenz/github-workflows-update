@@ -13,6 +13,8 @@ pub struct Entity {
     pub reference: String,
     /// The resource part - `reference` without the version
     pub resource: String,
-    /// The version
+    /// The current version
     pub version: Version,
+    /// The latest version
+    pub latest: Option<Version>,
 }

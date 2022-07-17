@@ -2,14 +2,15 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
-use anyhow::anyhow;
 use anyhow::Result;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tracing::{event, instrument, Level};
 use versions::Version;
 
+use crate::entity::Entity;
 use crate::vers::docker;
+use crate::vers::Versions;
 
 #[derive(Debug)]
 pub struct Server {
@@ -25,7 +26,7 @@ pub struct Client {
 pub enum Message {
     Request {
         resource: String,
-        client_ch: oneshot::Sender<Result<Version>>,
+        client_ch: oneshot::Sender<Result<Vec<Version>>>,
     },
 }
 
@@ -49,14 +50,10 @@ impl Server {
     }
 
     #[instrument]
-    async fn handle_request(resource: &str, client_ch: oneshot::Sender<Result<Version>>) {
-        client_ch
-            .send(if let Some(url) = docker::url(resource) {
-                docker::get_latest_version(&url).await
-            } else {
-                Err(anyhow!("could not parse resource"))
-            })
-            .expect("client_ch send error");
+    async fn handle_request(resource: &str, client_ch: oneshot::Sender<Result<Vec<Version>>>) {
+        if let Some(url) = docker::url(resource) {
+            client_ch.send(docker::get_versions(&url).await).unwrap();
+        }
     }
 
     #[instrument]
@@ -75,7 +72,7 @@ impl Default for Server {
 
 impl Client {
     #[instrument]
-    pub async fn get_latest_version(&self, resource: &str) -> Result<Version> {
+    pub async fn get_versions(&self, resource: &str) -> Result<Vec<Version>> {
         let (client_ch, response) = oneshot::channel();
         self.server_ch
             .send(Message::Request {
@@ -84,5 +81,48 @@ impl Client {
             })
             .await?;
         response.await?
+    }
+
+    #[instrument]
+    pub async fn resolve_entity(&self, mut entity: Entity) -> Entity {
+        let versions = match self.get_versions(&entity.resource).await {
+            Ok(versions) => versions,
+            Err(e) => {
+                event!(
+                    Level::ERROR,
+                    resource = entity.resource,
+                    error = %e,
+                    "error getting version",
+                );
+                return entity;
+            }
+        };
+        if versions.is_empty() {
+            event!(
+                Level::ERROR,
+                resource = entity.resource,
+                versions = ?Versions::new(&versions),
+                "no version found",
+            );
+            return entity;
+        } else if !versions.contains(&entity.version) {
+            event!(
+                Level::WARN,
+                resource = entity.resource,
+                current = %entity.version,
+                versions = ?Versions::new(&versions),
+                "current version not present in version list",
+            );
+        }
+        let latest = versions.iter().max().unwrap();
+        event!(
+            Level::INFO,
+            resource = entity.resource,
+            versions = ?Versions::new(&versions),
+            latest = %latest,
+            "got versions",
+        );
+        entity.latest = Some(latest.clone());
+        entity
     }
 }
