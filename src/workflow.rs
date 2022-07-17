@@ -8,6 +8,7 @@ use serde_yaml::Value;
 use std::io;
 use std::path;
 use tokio::io::AsyncReadExt;
+use tokio::io::AsyncWriteExt;
 use tracing::instrument;
 use versions::Version;
 
@@ -46,6 +47,21 @@ impl Workflow {
             .await
             .into_iter()
             .collect::<Vec<_>>();
+    }
+
+    pub async fn update_file(&self) -> Result<bool> {
+        let mut contents = self.contents.clone();
+        for entity in &self.entities {
+            if let Some(updated_line) = &entity.updated_line {
+                contents = contents.replace(&entity.line, updated_line);
+            }
+        }
+        let updated = contents != self.contents;
+        if updated {
+            let mut file = tokio::fs::File::create(&self.filename).await?;
+            file.write_all(contents.as_bytes()).await?;
+        }
+        Ok(updated)
     }
 }
 

@@ -19,7 +19,7 @@ use workflow::Workflow;
 pub mod vers;
 
 #[instrument(fields(filename = ?filename.as_ref().display()))]
-pub async fn process_file(filename: impl AsRef<path::Path>) {
+pub async fn process_file(inplace: bool, filename: impl AsRef<path::Path>) {
     let filename = filename.as_ref();
     let mut workflow = match Workflow::new(filename).await {
         Ok(entities) => entities,
@@ -47,19 +47,50 @@ pub async fn process_file(filename: impl AsRef<path::Path>) {
             }
         }
     }
+    if inplace {
+        match workflow.update_file().await {
+            Ok(true) => {
+                event!(
+                    Level::INFO,
+                    filename = ?filename,
+                    "updated"
+                );
+            }
+            Ok(false) => {
+                event!(
+                    Level::INFO,
+                    filename = ?filename,
+                    "unchanged"
+                );
+            }
+            Err(e) => {
+                event!(
+                    Level::ERROR,
+                    error = ?e,
+                    filename = ?filename,
+                    "error writing updated file"
+                );
+            }
+        }
+    }
 }
 
-pub async fn main() -> Result<()> {
+pub async fn main(inplace: bool) -> Result<()> {
     env_logger::init();
     let futures = ReadDirStream::new(tokio::fs::read_dir(".github/workflows").await?)
         .filter_map(|filename| match filename {
             Ok(filename) => Some(filename.path()),
-            Err(e) => {
-                eprintln!("{}", e);
+            Err(ref e) => {
+                event!(
+                    Level::ERROR,
+                    error = ?e,
+                    filename = ?filename,
+                    "error getting filename from .github/workflows"
+                );
                 None
             }
         })
-        .map(process_file)
+        .map(|f| process_file(inplace, f))
         .collect::<Vec<_>>()
         .await;
     join_all(futures).await;
