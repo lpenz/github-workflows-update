@@ -7,13 +7,10 @@ use anyhow::ensure;
 use anyhow::Context;
 use anyhow::Result;
 use async_trait::async_trait;
-use tracing::event;
 use tracing::instrument;
-use tracing::Level;
 use versions::Version;
 
 use crate::entity::Entity;
-use crate::prettyvers;
 use crate::updater;
 
 #[derive(Debug, Default)]
@@ -86,11 +83,6 @@ pub async fn get_versions(url: &str) -> Result<Vec<Version>> {
     let data = get_json(url).await?;
     let versions =
         parse_versions(data).with_context(|| format!("error processing json from {}", url))?;
-    event!(
-        Level::INFO,
-        versions = ?prettyvers::Versions::new(&versions),
-        "parsed versions"
-    );
     Ok(versions)
 }
 
