@@ -23,7 +23,11 @@ pub mod resolver;
 pub mod prettyvers;
 
 #[instrument(level="info", fields(filename = ?filename.as_ref().display()))]
-pub async fn process_file(inplace: bool, filename: impl AsRef<path::Path>) {
+pub async fn process_file(
+    inplace: bool,
+    resolver: &resolver::Server,
+    filename: impl AsRef<path::Path>,
+) {
     let filename = filename.as_ref();
     let mut workflow = match Workflow::new(filename).await {
         Ok(entities) => entities,
@@ -36,8 +40,7 @@ pub async fn process_file(inplace: bool, filename: impl AsRef<path::Path>) {
             return;
         }
     };
-    let resolver = resolver::Server::new();
-    workflow.resolve_entities(&resolver).await;
+    workflow.resolve_entities(resolver).await;
     for entity in &workflow.entities {
         if let Some(ref latest) = entity.latest {
             if &entity.version != latest {
@@ -81,6 +84,7 @@ pub async fn process_file(inplace: bool, filename: impl AsRef<path::Path>) {
 
 pub async fn main(inplace: bool) -> Result<()> {
     env_logger::init();
+    let resolver = resolver::Server::new();
     let futures = ReadDirStream::new(tokio::fs::read_dir(".github/workflows").await?)
         .filter_map(|filename| match filename {
             Ok(filename) => Some(filename.path()),
@@ -94,7 +98,7 @@ pub async fn main(inplace: bool) -> Result<()> {
                 None
             }
         })
-        .map(|f| process_file(inplace, f))
+        .map(|f| process_file(inplace, &resolver, f))
         .collect::<Vec<_>>()
         .await;
     join_all(futures).await;

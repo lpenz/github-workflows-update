@@ -3,6 +3,7 @@
 // file 'LICENSE', which is part of this source code package.
 
 use anyhow::Result;
+use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tracing::{event, instrument, Level};
@@ -27,23 +28,53 @@ pub struct Client {
 pub enum Message {
     Request {
         resource: String,
-        client_ch: oneshot::Sender<Result<Vec<Version>>>,
+        client_ch: oneshot::Sender<Vec<Version>>,
+    },
+    Downloaded {
+        resource: String,
+        versions: Vec<Version>,
     },
 }
+
+type Pending = HashMap<String, Vec<oneshot::Sender<Vec<Version>>>>;
 
 impl Server {
     #[instrument(level = "debug")]
     pub fn new() -> Server {
         let (server_ch, mut queue): (mpsc::Sender<Message>, mpsc::Receiver<Message>) =
             mpsc::channel(32);
+        let worker_ch = server_ch.clone();
         tokio::spawn(async move {
             event!(Level::INFO, "Server task started");
+            let mut pending: Pending = Default::default();
             while let Some(msg) = queue.recv().await {
                 match msg {
                     Message::Request {
                         resource,
                         client_ch,
-                    } => Server::handle_request(&resource, client_ch).await,
+                    } => {
+                        Server::handle_request(worker_ch.clone(), &mut pending, resource, client_ch)
+                            .await
+                    }
+                    Message::Downloaded { resource, versions } => {
+                        if let Some(clients) = pending.remove(&resource) {
+                            event!(
+                                Level::INFO,
+                                resource = resource,
+                                num_clients = clients.len(),
+                                "retrieved, answering pending"
+                            );
+                            for client_ch in clients {
+                                client_ch.send(versions.clone()).unwrap();
+                            }
+                        } else {
+                            event!(
+                                Level::ERROR,
+                                resource = resource,
+                                "no pending request found"
+                            );
+                        }
+                    }
                 }
             }
         });
@@ -51,8 +82,13 @@ impl Server {
     }
 
     #[instrument(level = "debug")]
-    async fn handle_request(resource: &str, client_ch: oneshot::Sender<Result<Vec<Version>>>) {
-        let updater = match updater_for(resource) {
+    async fn handle_request(
+        worker_ch: mpsc::Sender<Message>,
+        pending: &mut Pending,
+        resource: String,
+        client_ch: oneshot::Sender<Vec<Version>>,
+    ) {
+        let updater = match updater_for(&resource) {
             Ok(updater) => updater,
             Err(e) => {
                 event!(
@@ -64,7 +100,7 @@ impl Server {
                 return;
             }
         };
-        let url = match updater.url(resource) {
+        let url = match updater.url(&resource) {
             Some(url) => url,
             None => {
                 event!(
@@ -76,7 +112,36 @@ impl Server {
                 return;
             }
         };
-        client_ch.send(updater.get_versions(&url).await).unwrap();
+        let e = pending.entry(resource.clone()).or_default();
+        if e.is_empty() {
+            event!(Level::INFO, resource = resource, "downloader task started");
+            tokio::spawn(async move {
+                match updater.get_versions(&url).await {
+                    Ok(versions) => {
+                        worker_ch
+                            .send(Message::Downloaded { resource, versions })
+                            .await
+                            .unwrap();
+                    }
+                    Err(e) => {
+                        event!(
+                            Level::ERROR,
+                            url = url,
+                            updater = ?updater,
+                            error = %e,
+                            "error in get_version"
+                        );
+                    }
+                };
+            });
+        } else {
+            event!(
+                Level::INFO,
+                resource = resource,
+                "downloader task already present"
+            );
+        }
+        e.push(client_ch);
     }
 
     #[instrument(level = "debug")]
@@ -103,7 +168,7 @@ impl Client {
                 client_ch,
             })
             .await?;
-        response.await?
+        Ok(response.await?)
     }
 
     #[instrument(level = "debug")]
