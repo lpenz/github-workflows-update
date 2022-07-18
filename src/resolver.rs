@@ -36,6 +36,7 @@ pub enum Message {
     },
 }
 
+type Cache = HashMap<String, Vec<Version>>;
 type Pending = HashMap<String, Vec<oneshot::Sender<Vec<Version>>>>;
 
 impl Server {
@@ -47,16 +48,24 @@ impl Server {
         tokio::spawn(async move {
             event!(Level::INFO, "Server task started");
             let mut pending: Pending = Default::default();
+            let mut cache: Cache = Default::default();
             while let Some(msg) = queue.recv().await {
                 match msg {
                     Message::Request {
                         resource,
                         client_ch,
                     } => {
-                        Server::handle_request(worker_ch.clone(), &mut pending, resource, client_ch)
-                            .await
+                        Server::handle_request(
+                            worker_ch.clone(),
+                            &cache,
+                            &mut pending,
+                            resource,
+                            client_ch,
+                        )
+                        .await
                     }
                     Message::Downloaded { resource, versions } => {
+                        cache.insert(resource.clone(), versions.clone());
                         if let Some(clients) = pending.remove(&resource) {
                             event!(
                                 Level::INFO,
@@ -84,10 +93,16 @@ impl Server {
     #[instrument(level = "debug")]
     async fn handle_request(
         worker_ch: mpsc::Sender<Message>,
+        cache: &Cache,
         pending: &mut Pending,
         resource: String,
         client_ch: oneshot::Sender<Vec<Version>>,
     ) {
+        if let Some(versions) = cache.get(&resource) {
+            event!(Level::INFO, resource = resource, "cache hit");
+            Server::worker_send(worker_ch, resource, versions.clone()).await;
+            return;
+        }
         let updater = match updater_for(&resource) {
             Ok(updater) => updater,
             Err(e) => {
@@ -118,15 +133,12 @@ impl Server {
             tokio::spawn(async move {
                 match updater.get_versions(&url).await {
                     Ok(versions) => {
-                        worker_ch
-                            .send(Message::Downloaded { resource, versions })
-                            .await
-                            .unwrap();
+                        Server::worker_send(worker_ch, resource, versions).await;
                     }
                     Err(e) => {
                         event!(
                             Level::ERROR,
-                            url = url,
+                            resource = resource,
                             updater = ?updater,
                             error = %e,
                             "error in get_version"
@@ -142,6 +154,24 @@ impl Server {
             );
         }
         e.push(client_ch);
+    }
+
+    #[instrument(level = "debug")]
+    async fn worker_send(
+        worker_ch: mpsc::Sender<Message>,
+        resource: String,
+        versions: Vec<Version>,
+    ) {
+        if let Err(e) = worker_ch
+            .send(Message::Downloaded { resource, versions })
+            .await
+        {
+            event!(
+                Level::ERROR,
+                error = %e,
+                "error sending download to server task"
+            );
+        }
     }
 
     #[instrument(level = "debug")]
