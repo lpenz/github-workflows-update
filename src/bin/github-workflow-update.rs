@@ -4,18 +4,6 @@
 
 use anyhow::Result;
 
-use clap::Parser;
-
-#[derive(Parser, Debug)]
-#[clap(author, version, about, long_about = None)]
-pub struct Args {
-    /// Update the workflow file in-place
-    #[clap(short, long = "in-place")]
-    inplace: bool,
-}
-
-#[tokio::main]
-pub async fn main() -> Result<()> {
-    let args = Args::parse();
-    github_workflow_update::main(args.inplace).await
+pub fn main() -> Result<()> {
+    github_workflow_update::cmd::main()
 }
