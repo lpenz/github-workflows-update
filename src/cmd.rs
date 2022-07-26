@@ -21,8 +21,11 @@ pub struct Args {
     #[clap(short = 'n', long = "dry-run")]
     pub dryrun: bool,
     /// Output format for the outdated action messages
-    #[clap(short = 'f', long = "output-format", arg_enum, value_parser)]
-    pub output: Option<OutputFormat>,
+    #[clap(short = 'f', long, arg_enum, value_parser)]
+    pub output_format: Option<OutputFormat>,
+    /// Return error if any outdated actions are found
+    #[clap(long)]
+    pub error_on_outdated: bool,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum, Default, Debug)]
@@ -54,13 +57,37 @@ pub async fn main() -> Result<()> {
         .map(|f| {
             crate::processor::process_file(
                 args.dryrun,
-                args.output.unwrap_or_default(),
+                args.output_format.unwrap_or_default(),
                 &resolver,
                 f,
             )
         })
         .collect::<Vec<_>>()
         .await;
-    join_all(futures).await;
+    let mut any_outdated = false;
+    for result in join_all(futures).await {
+        match result {
+            Ok(true) => {
+                any_outdated = true;
+            }
+            Err(_) => {
+                // Errors are traced by the underlying functions, we
+                // just need to report the failure to the shell
+                std::process::exit(1);
+            }
+            _ => {}
+        }
+    }
+    if any_outdated && args.error_on_outdated {
+        match args.output_format.unwrap_or_default() {
+            OutputFormat::Standard => {
+                eprintln!("Found oudated entities");
+            }
+            OutputFormat::GithubWarning => {
+                println!("::error ::outdated entities found");
+            }
+        }
+        std::process::exit(2);
+    }
     Ok(())
 }
