@@ -79,11 +79,20 @@ macro_rules! regex {
 #[instrument(level = "debug")]
 fn reference_parse_version(reference: &str) -> Option<(String, Version)> {
     let re_docker = regex!(r"^(?P<resource>docker://[^:]+):v?(?P<version>[0-9.]+)$");
-    let m = re_docker.captures(reference)?;
-    Some((
-        m.name("resource").unwrap().as_str().into(),
-        Version::new(m.name("version").unwrap().as_str())?,
-    ))
+    if let Some(m) = re_docker.captures(reference) {
+        return Some((
+            m.name("resource").unwrap().as_str().into(),
+            Version::new(m.name("version").unwrap().as_str())?,
+        ));
+    }
+    let re_github = regex!(r"^(?P<userrepo>[^/]+/[^@]+)@v?(?P<version>[0-9.]+)$");
+    if let Some(m) = re_github.captures(reference) {
+        return Some((
+            format!("github://{}", m.name("userrepo").unwrap().as_str()),
+            Version::new(m.name("version").unwrap().as_str())?,
+        ));
+    }
+    None
 }
 
 #[instrument(level = "debug", skip(r))]
