@@ -2,7 +2,7 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
-use versions::Version;
+use crate::version::Version;
 
 /// A "versionable" entity
 #[derive(Debug, Default)]

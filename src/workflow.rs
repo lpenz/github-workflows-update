@@ -12,10 +12,10 @@ use tokio::io::AsyncWriteExt;
 use tracing::event;
 use tracing::instrument;
 use tracing::Level;
-use versions::Version;
 
 use crate::entity::Entity;
 use crate::resolver;
+use crate::version::Version;
 
 #[derive(Debug)]
 pub struct Workflow {

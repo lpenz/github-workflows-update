@@ -5,9 +5,9 @@
 use anyhow::anyhow;
 use anyhow::Result;
 use async_trait::async_trait;
-use versions::Version;
 
 use crate::entity::Entity;
+use crate::version::Version;
 
 #[async_trait]
 pub trait Updater: std::fmt::Debug {

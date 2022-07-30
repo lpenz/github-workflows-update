@@ -8,10 +8,10 @@ use anyhow::Context;
 use anyhow::Result;
 use async_trait::async_trait;
 use tracing::instrument;
-use versions::Version;
 
 use crate::entity::Entity;
 use crate::updater;
+use crate::version::Version;
 
 #[derive(Debug, Default)]
 pub struct Docker {}

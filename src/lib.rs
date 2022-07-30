@@ -4,6 +4,8 @@
 
 pub mod cmd;
 
+pub mod version;
+
 pub mod entity;
 
 pub mod workflow;

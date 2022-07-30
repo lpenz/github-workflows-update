@@ -7,12 +7,12 @@ use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tracing::{event, instrument, Level};
-use versions::Version;
 
 use crate::entity::Entity;
 use crate::prettyvers;
 use crate::updater::updater_for;
 use crate::updater::Updater;
+use crate::version::Version;
 
 #[derive(Debug)]
 pub struct Server {

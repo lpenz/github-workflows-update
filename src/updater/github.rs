@@ -9,10 +9,10 @@ use anyhow::Result;
 use async_trait::async_trait;
 use reqwest::header::USER_AGENT;
 use tracing::instrument;
-use versions::Version;
 
 use crate::entity::Entity;
 use crate::updater;
+use crate::version::Version;
 
 macro_rules! regex {
     ($re:literal $(,)?) => {{

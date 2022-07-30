@@ -3,7 +3,8 @@
 // file 'LICENSE', which is part of this source code package.
 
 use anyhow::Result;
-use versions::Version;
+
+use crate::version::Version;
 
 /// Wrapper that prints a vector of versions using the default version formatter
 pub struct Versions<'a> {
