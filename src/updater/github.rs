@@ -2,15 +2,13 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
-use anyhow::anyhow;
-use anyhow::ensure;
-use anyhow::Context;
-use anyhow::Result;
 use async_trait::async_trait;
 use reqwest::header::USER_AGENT;
 use tracing::instrument;
 
 use crate::entity::Entity;
+use crate::error::Error;
+use crate::error::Result;
 use crate::updater;
 use crate::version::Version;
 
@@ -35,7 +33,7 @@ impl updater::Updater for Github {
     }
 
     fn updated_line(&self, entity: &Entity) -> Option<String> {
-        let path = entity.resource.strip_prefix("github://").unwrap();
+        let path = entity.resource.strip_prefix("github://")?;
         entity.latest.as_ref().map(|v| format!("{}@{}", path, v))
     }
 }
@@ -60,41 +58,37 @@ async fn get_json(url: &str) -> Result<serde_json::Value> {
         builder = builder.header("Authorization", format!("token {}", token));
     }
     let response = builder.send().await?;
-    ensure!(
-        response.status().is_success(),
-        anyhow!(format!("{} while getting {}", response.status(), url))
-    );
-    response
-        .json::<serde_json::Value>()
-        .await
-        .with_context(|| format!("error parsing json in {}", url))
+    if !response.status().is_success() {
+        return Err(Error::HttpError(url.into(), response.status()));
+    }
+    Ok(response.json::<serde_json::Value>().await?)
 }
 
 #[instrument(level = "debug")]
 fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
     data.as_array()
-        .ok_or_else(|| anyhow!("invalid type for layer object list"))?
+        .ok_or_else(|| Error::JsonParsing("invalid type for layer object list".into()))?
         .iter()
         .map(|tag_obj| {
             tag_obj
                 .as_object()
-                .ok_or_else(|| anyhow!("invalid type for tag object"))?
+                .ok_or_else(|| Error::JsonParsing("invalid type for tag object".into()))?
                 .get("ref")
-                .ok_or_else(|| anyhow!("ref field not found in tag object"))
+                .ok_or_else(|| Error::JsonParsing("ref field not found in tag object".into()))
                 .map(|ref_value| {
                     let re_ref = regex!(r"^refs/tags/(?P<version>.+)$");
-                    let m =
-                        re_ref
-                            .captures(ref_value.as_str().ok_or_else(|| {
-                                anyhow!("invalid format for ref field in tag object")
-                            })?)
-                            .ok_or_else(|| anyhow!("could not find ref field in tag object"))?;
-                    Version::new(
-                        m.name("version")
-                            .ok_or_else(|| anyhow!("unable to parse version"))?
-                            .as_str(),
-                    )
-                    .ok_or_else(|| anyhow!("unable to parse version"))
+                    let version_str = ref_value.as_str().ok_or_else(|| {
+                        Error::JsonParsing("invalid type for ref field in tag object".into())
+                    })?;
+                    let m = re_ref.captures(version_str).ok_or_else(|| {
+                        Error::JsonParsing(format!(
+                            "could not match github ref {} to tag regex",
+                            version_str
+                        ))
+                    })?;
+                    let version_str = m.name("version").unwrap().as_str();
+                    Version::new(version_str)
+                        .ok_or_else(|| Error::VersionParsing(version_str.into()))
                 })?
         })
         .collect::<Result<Vec<Version>>>()
@@ -103,8 +97,7 @@ fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
 #[instrument(level = "debug")]
 pub async fn get_versions(url: &str) -> Result<Vec<Version>> {
     let data = get_json(url).await?;
-    let versions =
-        parse_versions(data).with_context(|| format!("error processing json from {}", url))?;
+    let versions = parse_versions(data)?;
     Ok(versions)
 }
 

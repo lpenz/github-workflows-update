@@ -4,6 +4,8 @@
 
 pub mod cmd;
 
+pub mod error;
+
 pub mod version;
 
 pub mod entity;

@@ -2,14 +2,12 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
-use anyhow::anyhow;
-use anyhow::ensure;
-use anyhow::Context;
-use anyhow::Result;
 use async_trait::async_trait;
 use tracing::instrument;
 
 use crate::entity::Entity;
+use crate::error::Error;
+use crate::error::Result;
 use crate::updater;
 use crate::version::Version;
 
@@ -47,32 +45,31 @@ pub fn url(resource: &str) -> Option<String> {
 #[instrument(level = "debug")]
 async fn get_json(url: &str) -> Result<serde_json::Value> {
     let response = reqwest::get(url).await?;
-    ensure!(
-        response.status().is_success(),
-        anyhow!(format!("{} while getting {}", response.status(), url))
-    );
-    response
-        .json::<serde_json::Value>()
-        .await
-        .with_context(|| format!("error parsing json in {}", url))
+    if !response.status().is_success() {
+        return Err(Error::HttpError(url.into(), response.status()));
+    }
+    Ok(response.json::<serde_json::Value>().await?)
 }
 
 #[instrument(level = "debug")]
 fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
     data.as_array()
-        .ok_or_else(|| anyhow!("invalid type for layer object list"))?
+        .ok_or_else(|| Error::JsonParsing("invalid type for layer object list".into()))?
         .iter()
         .map(|layer| {
             layer
                 .as_object()
-                .ok_or_else(|| anyhow!("invalid type for layer object"))?
+                .ok_or_else(|| Error::JsonParsing("invalid type for layer object".into()))?
                 .get("name")
-                .ok_or_else(|| anyhow!("\"name\" field not found in layer object"))
+                .ok_or_else(|| {
+                    Error::JsonParsing("\"name\" field not found in layer object".into())
+                })
                 .map(|version_value| {
                     let version_str = version_value.as_str().ok_or_else(|| {
-                        anyhow!("invalid type for \"name\" field in layer object")
+                        Error::JsonParsing("invalid type for \"name\" field in layer object".into())
                     })?;
-                    Version::new(version_str).ok_or_else(|| anyhow!("unable to parse version"))
+                    Version::new(version_str)
+                        .ok_or_else(|| Error::VersionParsing(version_str.into()))
                 })?
         })
         .collect::<Result<Vec<Version>>>()
@@ -81,8 +78,7 @@ fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
 #[instrument(level = "debug")]
 pub async fn get_versions(url: &str) -> Result<Vec<Version>> {
     let data = get_json(url).await?;
-    let versions =
-        parse_versions(data).with_context(|| format!("error processing json from {}", url))?;
+    let versions = parse_versions(data)?;
     Ok(versions)
 }
 

@@ -2,11 +2,11 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
-use anyhow::anyhow;
-use anyhow::Result;
 use async_trait::async_trait;
 
 use crate::entity::Entity;
+use crate::error::Error;
+use crate::error::Result;
 use crate::version::Version;
 
 #[async_trait]
@@ -54,6 +54,6 @@ pub fn updater_for(resource: &str) -> Result<impl Updater> {
     } else if let Some(_url) = github::url(resource) {
         Ok(Upd::Github(github::Github::default()))
     } else {
-        Err(anyhow!("no updater found"))
+        Err(Error::UpdaterNotFound(resource.into()))
     }
 }
