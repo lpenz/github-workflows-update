@@ -123,7 +123,7 @@ fn test_docker_parse_versions() -> Result<()> {
     }
   },
   {
-    "ref": "refs/tags/v0.2",
+    "ref": "refs/tags/0.2",
     "node_id": "REF_kwDOHcsoLq5yZWZzL3RhZ3MvdjAuMg",
     "url": "https://api.github.com/repos/lpenz/ghworkflow-rust/git/refs/tags/v0.2",
     "object": {
@@ -155,10 +155,12 @@ fn test_docker_parse_versions() -> Result<()> {
 ]
 "#;
     let json_value: serde_json::Value = serde_json::from_str(json_str)?;
-    let versions = parse_versions(json_value)?
+    let mut versions = parse_versions(json_value)?.into_iter().collect::<Vec<_>>();
+    versions.sort();
+    let versions = versions
         .into_iter()
         .map(|v| format!("{}", v))
         .collect::<Vec<_>>();
-    assert_eq!(versions, ["v0.1", "v0.2", "latest", "v0.4"]);
+    assert_eq!(versions, ["latest", "v0.1", "0.2", "v0.4"]);
     Ok(())
 }
