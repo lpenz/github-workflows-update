@@ -5,10 +5,8 @@
 use crate::version::Version;
 
 /// A "versionable" entity
-#[derive(Debug, Default)]
+#[derive(Debug, PartialEq, Eq, Hash, Default)]
 pub struct Entity {
-    /// Workflow job
-    pub job: String,
     /// The whole entity-describing string
     pub line: String,
     /// The resource part - `reference` without the version

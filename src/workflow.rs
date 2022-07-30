@@ -5,6 +5,7 @@
 use anyhow::{anyhow, Result};
 use futures::future::join_all;
 use serde_yaml::Value;
+use std::collections::HashSet;
 use std::io;
 use std::path;
 use tokio::io::AsyncReadExt;
@@ -21,7 +22,7 @@ use crate::version::Version;
 pub struct Workflow {
     pub filename: path::PathBuf,
     pub contents: String,
-    pub entities: Vec<Entity>,
+    pub entities: HashSet<Entity>,
 }
 
 impl Workflow {
@@ -49,7 +50,7 @@ impl Workflow {
         self.entities = join_all(resolve_entity_tasks)
             .await
             .into_iter()
-            .collect::<Vec<_>>();
+            .collect::<HashSet<_>>();
     }
 
     #[instrument(level = "debug")]
@@ -96,22 +97,19 @@ fn reference_parse_version(reference: &str) -> Option<(String, Version)> {
 }
 
 #[instrument(level = "debug", skip(r))]
-fn buf_parse(r: impl io::BufRead) -> Result<Vec<Entity>> {
+fn buf_parse(r: impl io::BufRead) -> Result<HashSet<Entity>> {
     let data: serde_yaml::Mapping = serde_yaml::from_reader(r)?;
     let jobs = data
         .get(&Value::String("jobs".into()))
         .ok_or_else(|| anyhow!("jobs entry not found"))?
         .as_mapping()
         .ok_or_else(|| anyhow!("invalid type for jobs entry"))?;
-    let mut ret = vec![];
-    for (jobname_, job) in jobs {
+    let mut ret = HashSet::default();
+    for (_, job) in jobs {
         if let Some(steps) = job.get(&Value::String("steps".into())) {
             let steps = steps
                 .as_sequence()
                 .ok_or_else(|| anyhow!("invalid type for steps entry"))?;
-            let jobname = jobname_
-                .as_str()
-                .ok_or_else(|| anyhow!("invalid type for job key"))?;
             for step in steps {
                 if let Some(uses) = step.get(&Value::String("uses".into())) {
                     let reference = uses
@@ -119,14 +117,13 @@ fn buf_parse(r: impl io::BufRead) -> Result<Vec<Entity>> {
                         .ok_or_else(|| anyhow!("invalid type for uses entry"))?;
                     if let Some((resource, version)) = reference_parse_version(reference) {
                         let entity = Entity {
-                            job: String::from(jobname),
                             line: reference.into(),
                             resource,
                             version,
                             ..Default::default()
                         };
                         event!(Level::INFO, reference = reference, "parsed entity");
-                        ret.push(entity);
+                        ret.insert(entity);
                     } else {
                         event!(Level::WARN, reference = reference, "entity not parsed");
                     }

@@ -8,7 +8,7 @@ use lenient_semver;
 use semver;
 
 /// Wrapper for the underlying external Version type
-#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Default)]
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Default, Hash)]
 pub struct Version {
     pub version: Option<semver::Version>,
     pub string: String,
