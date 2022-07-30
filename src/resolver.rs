@@ -2,7 +2,7 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
-use anyhow::Result;
+use anyhow;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
@@ -28,16 +28,16 @@ pub struct Client {
 pub enum Message {
     Request {
         resource: String,
-        client_ch: oneshot::Sender<Vec<Version>>,
+        client_ch: oneshot::Sender<Option<Vec<Version>>>,
     },
     Downloaded {
         resource: String,
-        versions: Vec<Version>,
+        versions: Option<Vec<Version>>,
     },
 }
 
-type Cache = HashMap<String, Vec<Version>>;
-type Pending = HashMap<String, Vec<oneshot::Sender<Vec<Version>>>>;
+type Cache = HashMap<String, Option<Vec<Version>>>;
+type Pending = HashMap<String, Vec<oneshot::Sender<Option<Vec<Version>>>>>;
 
 impl Server {
     #[instrument(level = "debug")]
@@ -96,7 +96,7 @@ impl Server {
         cache: &Cache,
         pending: &mut Pending,
         resource: String,
-        client_ch: oneshot::Sender<Vec<Version>>,
+        client_ch: oneshot::Sender<Option<Vec<Version>>>,
     ) {
         if let Some(versions) = cache.get(&resource) {
             event!(Level::INFO, resource = resource, "cache hit");
@@ -133,7 +133,7 @@ impl Server {
             tokio::spawn(async move {
                 match updater.get_versions(&url).await {
                     Ok(versions) => {
-                        Server::worker_send(worker_ch, resource, versions).await;
+                        Server::worker_send(worker_ch, resource, Some(versions)).await;
                     }
                     Err(e) => {
                         event!(
@@ -143,6 +143,7 @@ impl Server {
                             error = %e,
                             "error in get_version"
                         );
+                        Server::worker_send(worker_ch, resource, None).await;
                     }
                 };
             });
@@ -160,7 +161,7 @@ impl Server {
     async fn worker_send(
         worker_ch: mpsc::Sender<Message>,
         resource: String,
-        versions: Vec<Version>,
+        versions: Option<Vec<Version>>,
     ) {
         if let Err(e) = worker_ch
             .send(Message::Downloaded { resource, versions })
@@ -190,7 +191,7 @@ impl Default for Server {
 
 impl Client {
     #[instrument(level = "debug")]
-    pub async fn get_versions(&self, resource: &str) -> Result<Vec<Version>> {
+    pub async fn get_versions(&self, resource: &str) -> anyhow::Result<Option<Vec<Version>>> {
         let (client_ch, response) = oneshot::channel();
         self.server_ch
             .send(Message::Request {
@@ -204,7 +205,7 @@ impl Client {
     #[instrument(level = "debug")]
     pub async fn resolve_entity(&self, mut entity: Entity) -> Entity {
         let versions = match self.get_versions(&entity.resource).await {
-            Ok(versions) => versions,
+            Ok(versions) => versions.unwrap_or_default(),
             Err(e) => {
                 event!(
                     Level::ERROR,
