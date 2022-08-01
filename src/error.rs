@@ -2,6 +2,8 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
+//! [`Error`] and [`Result`] types.
+
 use reqwest;
 use serde_json;
 

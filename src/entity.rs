@@ -2,6 +2,7 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
+//! The [`Entity`] type.
 use crate::version::Version;
 
 /// A "versionable" entity

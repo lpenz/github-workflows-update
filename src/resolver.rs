@@ -2,6 +2,10 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
+//! A resolver [`Server`] that makes async requests and caches the
+//! result, and an async [`Client`] that fills the `entity.latest`
+//! field with the latest version of the upstream entity.
+
 use anyhow;
 use std::collections::HashMap;
 use tokio::sync::mpsc;

@@ -9,7 +9,7 @@ readme = "README.md"
 homepage = "https://github.com/lpenz/github-workflow-update"
 repository = "https://github.com/lpenz/github-workflow-update"
 categories = ["command-line-utilities"]
-keywords = ["watch", "command-line"]
+keywords = ["github-action", "version-update"]
 
 [dependencies]
 anyhow = "1.0.58"

@@ -2,6 +2,10 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
+//! The resolver can deal with different upstream API's by using the
+//! [`Upd`] trait, which is generic over the currently supported
+//! [`docker`] and [`github`] upstreams.
+
 use async_trait::async_trait;
 
 use crate::entity::Entity;

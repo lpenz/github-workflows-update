@@ -2,6 +2,9 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
+//! Type wrapper for versions; currently using [`semver`]
+//! with [`lenient_semver`]
+
 use std::fmt;
 
 use lenient_semver;

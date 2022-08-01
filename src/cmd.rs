@@ -2,6 +2,8 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
+//! Command line arguments parsing and main function.
+
 use anyhow::Result;
 use futures::future::join_all;
 use tokio_stream::wrappers::ReadDirStream;

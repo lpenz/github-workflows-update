@@ -2,6 +2,11 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
+//! Workflow file parsing, into [`Workflow`] type.
+//!
+//! A workflow can have one or more [`Entity`]s that represent
+//! resource with a version.
+
 use anyhow::{anyhow, Result};
 use futures::future::join_all;
 use serde_yaml::Value;
