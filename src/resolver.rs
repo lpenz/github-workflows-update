@@ -9,7 +9,6 @@ use tokio::sync::oneshot;
 use tracing::{event, instrument, Level};
 
 use crate::entity::Entity;
-use crate::prettyvers;
 use crate::updater::updater_for;
 use crate::updater::Updater;
 use crate::version::Version;
@@ -220,7 +219,7 @@ impl Client {
             event!(
                 Level::ERROR,
                 resource = entity.resource,
-                versions = ?prettyvers::Versions::new(&versions),
+                versions = ?versions,
                 "no version found",
             );
             return entity;
@@ -229,7 +228,7 @@ impl Client {
                 Level::WARN,
                 resource = entity.resource,
                 current = %entity.version,
-                versions = ?prettyvers::Versions::new(&versions),
+                versions = ?versions,
                 "current version not present in version list",
             );
         }
@@ -237,7 +236,7 @@ impl Client {
         event!(
             Level::INFO,
             resource = entity.resource,
-            versions = ?prettyvers::Versions::new(&versions),
+            versions = ?versions,
             latest = %latest,
             "got versions",
         );
