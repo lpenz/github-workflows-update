@@ -9,6 +9,7 @@
 
 use anyhow::{anyhow, Result};
 use futures::future::join_all;
+use regex::Regex;
 use serde_yaml::Value;
 use std::collections::HashSet;
 use std::io;
@@ -75,23 +76,18 @@ impl Workflow {
     }
 }
 
-macro_rules! regex {
-    ($re:literal $(,)?) => {{
-        static RE: once_cell::sync::OnceCell<regex::Regex> = once_cell::sync::OnceCell::new();
-        RE.get_or_init(|| regex::Regex::new($re).unwrap())
-    }};
-}
-
 #[instrument(level = "debug")]
-fn reference_parse_version(reference: &str) -> Option<(String, Version)> {
-    let re_docker = regex!(r"^(?P<resource>docker://[^:]+):(?P<version>[^:]+)$");
+fn reference_parse_version(
+    re_docker: &Regex,
+    re_github: &Regex,
+    reference: &str,
+) -> Option<(String, Version)> {
     if let Some(m) = re_docker.captures(reference) {
         return Some((
             m.name("resource").unwrap().as_str().into(),
             Version::new(m.name("version").unwrap().as_str())?,
         ));
     }
-    let re_github = regex!(r"^(?P<userrepo>[^/]+/[^@]+)@(?P<version>[^@]+)$");
     if let Some(m) = re_github.captures(reference) {
         return Some((
             format!("github://{}", m.name("userrepo").unwrap().as_str()),
@@ -110,6 +106,8 @@ fn buf_parse(r: impl io::BufRead) -> Result<HashSet<Entity>> {
         .as_mapping()
         .ok_or_else(|| anyhow!("invalid type for jobs entry"))?;
     let mut ret = HashSet::default();
+    let re_docker = Regex::new(r"^(?P<resource>docker://[^:]+):(?P<version>[^:]+)$").unwrap();
+    let re_github = Regex::new(r"^(?P<userrepo>[^/]+/[^@]+)@(?P<version>[^@]+)$").unwrap();
     for (_, job) in jobs {
         if let Some(steps) = job.get(&Value::String("steps".into())) {
             let steps = steps
@@ -120,7 +118,9 @@ fn buf_parse(r: impl io::BufRead) -> Result<HashSet<Entity>> {
                     let reference = uses
                         .as_str()
                         .ok_or_else(|| anyhow!("invalid type for uses entry"))?;
-                    if let Some((resource, version)) = reference_parse_version(reference) {
+                    if let Some((resource, version)) =
+                        reference_parse_version(&re_docker, &re_github, reference)
+                    {
                         let entity = Entity {
                             line: reference.into(),
                             resource,

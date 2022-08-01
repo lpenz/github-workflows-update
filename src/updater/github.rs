@@ -12,15 +12,18 @@ use crate::error::Result;
 use crate::updater;
 use crate::version::Version;
 
-macro_rules! regex {
-    ($re:literal $(,)?) => {{
-        static RE: once_cell::sync::OnceCell<regex::Regex> = once_cell::sync::OnceCell::new();
-        RE.get_or_init(|| regex::Regex::new($re).unwrap())
-    }};
+#[derive(Debug)]
+pub struct Github {
+    re_ref: regex::Regex,
 }
 
-#[derive(Debug, Default)]
-pub struct Github {}
+impl Default for Github {
+    fn default() -> Github {
+        Github {
+            re_ref: regex::Regex::new(r"^refs/tags/(?P<version>.+)$").unwrap(),
+        }
+    }
+}
 
 #[async_trait]
 impl updater::Updater for Github {
@@ -29,7 +32,7 @@ impl updater::Updater for Github {
     }
 
     async fn get_versions(&self, url: &str) -> Result<Vec<Version>> {
-        get_versions(url).await
+        get_versions(self, url).await
     }
 
     fn updated_line(&self, entity: &Entity) -> Option<String> {
@@ -65,7 +68,7 @@ async fn get_json(url: &str) -> Result<serde_json::Value> {
 }
 
 #[instrument(level = "debug")]
-fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
+fn parse_versions(github: &Github, data: serde_json::Value) -> Result<Vec<Version>> {
     data.as_array()
         .ok_or_else(|| Error::JsonParsing("invalid type for layer object list".into()))?
         .iter()
@@ -76,11 +79,10 @@ fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
                 .get("ref")
                 .ok_or_else(|| Error::JsonParsing("ref field not found in tag object".into()))
                 .map(|ref_value| {
-                    let re_ref = regex!(r"^refs/tags/(?P<version>.+)$");
                     let version_str = ref_value.as_str().ok_or_else(|| {
                         Error::JsonParsing("invalid type for ref field in tag object".into())
                     })?;
-                    let m = re_ref.captures(version_str).ok_or_else(|| {
+                    let m = github.re_ref.captures(version_str).ok_or_else(|| {
                         Error::JsonParsing(format!(
                             "could not match github ref {} to tag regex",
                             version_str
@@ -95,9 +97,9 @@ fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
 }
 
 #[instrument(level = "debug")]
-pub async fn get_versions(url: &str) -> Result<Vec<Version>> {
+pub async fn get_versions(github: &Github, url: &str) -> Result<Vec<Version>> {
     let data = get_json(url).await?;
-    let versions = parse_versions(data)?;
+    let versions = parse_versions(github, data)?;
     Ok(versions)
 }
 
@@ -148,7 +150,10 @@ fn test_docker_parse_versions() -> Result<()> {
 ]
 "#;
     let json_value: serde_json::Value = serde_json::from_str(json_str)?;
-    let mut versions = parse_versions(json_value)?.into_iter().collect::<Vec<_>>();
+    let gh = Github::default();
+    let mut versions = parse_versions(&gh, json_value)?
+        .into_iter()
+        .collect::<Vec<_>>();
     versions.sort();
     let versions = versions
         .into_iter()
