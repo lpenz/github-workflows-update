@@ -29,7 +29,7 @@ jobs:
       - id: coverage
         uses: docker://lpenz/ghaction-rust-coverage:0.8.0
         with:
-          dependencies_debian: libssl-dev
+          dependencies_debian: libssl-dev pkg-config
       - uses: coverallsapp/github-action@v1.1.2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -62,35 +62,15 @@ jobs:
         with:
           command: clippy
           args: -- -D warnings
-  cargo-deb:
+  docker-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - id: version
-        uses: docker://lpenz/ghaction-version-gen:0.8.0
-      - uses: actions-rs/toolchain@v1
+      - uses: docker/build-push-action@v2
         with:
-          profile: minimal
-          toolchain: stable
-          override: true
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release
-      - name: Copy manual
-        run: find target -name '*.[0-9]' -exec cp -vt . {} +
-      - run: cargo install cargo-deb
-      - run: cargo deb --deb-version '${{ steps.version.outputs.version_commit }}'
-        if: steps.version.outputs.version_commit != ''
-      - uses: actions/upload-artifact@v2
-        if: steps.version.outputs.version_commit != ''
-        with:
-          if-no-files-found: error
-          path: |
-            target/debian/*.deb
-            target/release/*
+          push: false
   publish-crate:
-    needs: [ cargo-check, test-coverage, rustfmt, clippy, cargo-deb ]
+    needs: [ omnilint, cargo-check, test-coverage, rustfmt, clippy, docker-build ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -106,28 +86,18 @@ jobs:
         if: steps.version.outputs.version_tagged != '' && env.CARGO_REGISTRY_TOKEN != ''
         with:
           registry-token: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-  packagecloud:
-    needs: [ publish-crate ]
+  dockerhub:
+    needs: [ omnilint, cargo-check, test-coverage, rustfmt, clippy, docker-build ]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - id: version
-        uses: docker://lpenz/ghaction-version-gen:0.8.0
-      - uses: actions/download-artifact@v2
-        if: steps.version.outputs.version_tagged != ''
-      - uses: docker://lpenz/ghaction-packagecloud:v0.3
-        env:
-          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
-        if: steps.version.outputs.version_tagged != '' && env.PACKAGECLOUD_TOKEN != ''
+        uses: docker://lpenz/ghaction-version-gen:0.9.0
+      - uses: docker/login-action@v1
         with:
-          repository: debian/debian/bullseye
-      - uses: "marvinpinto/action-automatic-releases@v1.2.1"
-        env:
-          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
-        if: steps.version.outputs.version_tagged != '' && env.PACKAGECLOUD_TOKEN != ''
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - uses: docker/build-push-action@v2
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          prerelease: false
-          files: |
-            artifact/debian/*.deb
-            artifact/release/*
+          push: ${{ steps.version.outputs.version_docker_ci != 'null' }}
+          tags: ${{ github.repository }}:${{ steps.version.outputs.version_docker_ci }}
