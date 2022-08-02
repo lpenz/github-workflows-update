@@ -288,7 +288,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "github-workflow-update"
+name = "github-workflows-update"
 version = "0.1.0"
 dependencies = [
  "anyhow",

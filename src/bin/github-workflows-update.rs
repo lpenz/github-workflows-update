@@ -5,5 +5,5 @@
 use anyhow::Result;
 
 pub fn main() -> Result<()> {
-    github_workflow_update::cmd::main()
+    github_workflows_update::cmd::main()
 }

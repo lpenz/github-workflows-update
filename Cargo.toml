@@ -1,13 +1,13 @@
 [package]
-name = "github-workflow-update"
+name = "github-workflows-update"
 description = "Check github workflows for actions that can be updated"
 version = "0.1.0"
 authors = ["Leandro Lisboa Penz <lpenz@lpenz.org>"]
 edition = "2021"
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/lpenz/github-workflow-update"
-repository = "https://github.com/lpenz/github-workflow-update"
+homepage = "https://github.com/lpenz/github-workflows-update"
+repository = "https://github.com/lpenz/github-workflows-update"
 categories = ["command-line-utilities"]
 keywords = ["github-action", "version-update"]
 
