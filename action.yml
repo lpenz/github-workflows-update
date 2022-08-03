@@ -1,0 +1,12 @@
+---
+name: Github workflow versions checker
+description: >
+  Github action that checks the version of all entities used in an
+  workflow: standard github actions, docker github actions and
+  dispatched workflows.
+branding:
+  icon: 'trending-up'
+  color: 'orange'
+runs:
+  using: 'docker'
+  image: 'Dockerfile'
