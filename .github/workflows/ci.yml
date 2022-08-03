@@ -3,10 +3,7 @@ name: CI
 on: [ workflow_call, push, pull_request ]
 jobs:
   omnilint:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: docker://lpenz/omnilint:0.4
+    uses: lpenz/omnilint/.github/workflows/omnilint.yml@v0.5
   # Rust actions from:
   # https://github.com/actions-rs/meta/blob/master/recipes/quickstart.md
   cargo-check:
