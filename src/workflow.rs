@@ -20,8 +20,8 @@ use tracing::instrument;
 use tracing::Level;
 
 use crate::entity::Entity;
-use crate::entity::Resource;
 use crate::resolver;
+use crate::resource::Resource;
 
 #[derive(Debug)]
 pub struct Workflow {

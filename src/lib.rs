@@ -31,6 +31,7 @@ pub mod entity;
 pub mod error;
 pub mod processor;
 pub mod resolver;
+pub mod resource;
 pub mod updater;
 pub mod version;
 pub mod workflow;
