@@ -6,6 +6,7 @@
 
 use regex::Regex;
 use std::fmt;
+use tracing::instrument;
 
 use crate::error::Error;
 use crate::error::Result;
@@ -19,10 +20,12 @@ pub enum Resource {
 }
 
 impl Resource {
+    #[instrument(level = "debug")]
     pub fn new_docker(container: String) -> Resource {
         Resource::Docker { container }
     }
 
+    #[instrument(level = "debug")]
     pub fn new_ghaction(user: String, repo: String) -> Resource {
         Resource::GhAction { user, repo }
     }
@@ -41,6 +44,7 @@ impl Resource {
         }
     }
 
+    #[instrument(level = "debug")]
     pub fn parse(input: &str) -> Result<(Self, Version), Error> {
         let re_docker = Regex::new(r"^docker://(?P<resource>[^:]+):(?P<version>[^:]+)$").unwrap();
         if let Some(m) = re_docker.captures(input) {
@@ -69,6 +73,7 @@ impl Resource {
         Err(Error::ResourceParseError(input.into()))
     }
 
+    #[instrument(level = "debug")]
     pub fn url(&self) -> String {
         match self {
             Resource::Docker { container } => format!(
@@ -82,6 +87,7 @@ impl Resource {
         }
     }
 
+    #[instrument(level = "debug")]
     pub fn versioned_string(&self, version: &Version) -> String {
         match self {
             Resource::Docker { .. } => format!("{}:{}", self, version),
@@ -89,6 +95,7 @@ impl Resource {
         }
     }
 
+    #[instrument(level = "debug")]
     pub async fn get_versions(&self) -> Result<Vec<Version>> {
         match self {
             Resource::Docker { .. } => updater::docker::get_versions(&self.url()).await,
