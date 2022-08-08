@@ -11,7 +11,7 @@ use crate::error::Error;
 use crate::error::Result;
 use crate::version::Version;
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub enum Resource {
     Docker { container: String },
     GhAction { user: String, repo: String },
@@ -24,6 +24,20 @@ impl Resource {
 
     pub fn new_ghaction(user: String, repo: String) -> Resource {
         Resource::GhAction { user, repo }
+    }
+
+    pub fn is_docker(&self) -> bool {
+        match self {
+            Resource::Docker { .. } => true,
+            Resource::GhAction { .. } => false,
+        }
+    }
+
+    pub fn is_github(&self) -> bool {
+        match self {
+            Resource::Docker { .. } => false,
+            Resource::GhAction { .. } => true,
+        }
     }
 
     pub fn parse(input: &str) -> Result<(Self, Version), Error> {
@@ -52,6 +66,19 @@ impl Resource {
             ));
         }
         Err(Error::ResourceParseError(input.into()))
+    }
+
+    pub fn url(&self) -> String {
+        match self {
+            Resource::Docker { container } => format!(
+                "https://registry.hub.docker.com/v1/repositories/{}/tags",
+                container
+            ),
+            Resource::GhAction { user, repo } => format!(
+                "https://api.github.com/repos/{}/{}/git/matching-refs/tags",
+                user, repo
+            ),
+        }
     }
 }
 

@@ -13,6 +13,7 @@ use tokio::sync::oneshot;
 use tracing::{event, instrument, Level};
 
 use crate::entity::Entity;
+use crate::resource::Resource;
 use crate::updater::updater_for;
 use crate::updater::Updater;
 use crate::version::Version;
@@ -30,17 +31,17 @@ pub struct Client {
 #[derive(Debug)]
 pub enum Message {
     Request {
-        resource: String,
+        resource: Resource,
         client_ch: oneshot::Sender<Option<Vec<Version>>>,
     },
     Downloaded {
-        resource: String,
+        resource: Resource,
         versions: Option<Vec<Version>>,
     },
 }
 
-type Cache = HashMap<String, Option<Vec<Version>>>;
-type Pending = HashMap<String, Vec<oneshot::Sender<Option<Vec<Version>>>>>;
+type Cache = HashMap<Resource, Option<Vec<Version>>>;
+type Pending = HashMap<Resource, Vec<oneshot::Sender<Option<Vec<Version>>>>>;
 
 impl Server {
     #[instrument(level = "debug")]
@@ -72,7 +73,7 @@ impl Server {
                         if let Some(clients) = pending.remove(&resource) {
                             event!(
                                 Level::INFO,
-                                resource = resource,
+                                resource = %resource,
                                 num_clients = clients.len(),
                                 "retrieved, answering pending"
                             );
@@ -82,7 +83,7 @@ impl Server {
                         } else {
                             event!(
                                 Level::ERROR,
-                                resource = resource,
+                                resource = %resource,
                                 "no pending request found"
                             );
                         }
@@ -98,11 +99,11 @@ impl Server {
         worker_ch: mpsc::Sender<Message>,
         cache: &Cache,
         pending: &mut Pending,
-        resource: String,
+        resource: Resource,
         client_ch: oneshot::Sender<Option<Vec<Version>>>,
     ) {
         if let Some(versions) = cache.get(&resource) {
-            event!(Level::INFO, resource = resource, "cache hit");
+            event!(Level::INFO, resource = %resource, "cache hit");
             Server::worker_send(worker_ch, resource, versions.clone()).await;
             return;
         }
@@ -111,28 +112,17 @@ impl Server {
             Err(e) => {
                 event!(
                     Level::ERROR,
-                    resource = resource,
+                    resource = %resource,
                     error = %e,
                     "error getting updater",
                 );
                 return;
             }
         };
-        let url = match updater.url(&resource) {
-            Some(url) => url,
-            None => {
-                event!(
-                    Level::ERROR,
-                    resource = resource,
-                    updater = ?updater,
-                    "updater could not parse url",
-                );
-                return;
-            }
-        };
+        let url = resource.url();
         let e = pending.entry(resource.clone()).or_default();
         if e.is_empty() {
-            event!(Level::INFO, resource = resource, "downloader task started");
+            event!(Level::INFO, resource = %resource, "downloader task started");
             tokio::spawn(async move {
                 match updater.get_versions(&url).await {
                     Ok(versions) => {
@@ -141,7 +131,7 @@ impl Server {
                     Err(e) => {
                         event!(
                             Level::ERROR,
-                            resource = resource,
+                            resource = %resource,
                             updater = ?updater,
                             error = %e,
                             "error in get_version"
@@ -153,7 +143,7 @@ impl Server {
         } else {
             event!(
                 Level::INFO,
-                resource = resource,
+                resource = %resource,
                 "downloader task already present"
             );
         }
@@ -163,7 +153,7 @@ impl Server {
     #[instrument(level = "debug")]
     async fn worker_send(
         worker_ch: mpsc::Sender<Message>,
-        resource: String,
+        resource: Resource,
         versions: Option<Vec<Version>>,
     ) {
         if let Err(e) = worker_ch
@@ -194,11 +184,11 @@ impl Default for Server {
 
 impl Client {
     #[instrument(level = "debug")]
-    pub async fn get_versions(&self, resource: &str) -> anyhow::Result<Option<Vec<Version>>> {
+    pub async fn get_versions(&self, resource: &Resource) -> anyhow::Result<Option<Vec<Version>>> {
         let (client_ch, response) = oneshot::channel();
         self.server_ch
             .send(Message::Request {
-                resource: resource.to_owned(),
+                resource: resource.clone(),
                 client_ch,
             })
             .await?;
@@ -207,7 +197,7 @@ impl Client {
 
     #[instrument(level = "debug")]
     pub async fn resolve_entity(&self, mut entity: Entity) -> Entity {
-        let versions = match self.get_versions(&entity.resource.to_string()).await {
+        let versions = match self.get_versions(&entity.resource).await {
             Ok(versions) => versions.unwrap_or_default(),
             Err(e) => {
                 event!(
@@ -245,7 +235,7 @@ impl Client {
             "got versions",
         );
         entity.latest = Some(latest.clone());
-        if let Ok(updater) = updater_for(&entity.resource.to_string()) {
+        if let Ok(updater) = updater_for(&entity.resource) {
             entity.updated_line = updater.updated_line(&entity);
         }
         entity

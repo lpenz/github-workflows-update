@@ -27,10 +27,6 @@ impl Default for Github {
 
 #[async_trait]
 impl updater::Updater for Github {
-    fn url(&self, resource: &str) -> Option<String> {
-        url(resource)
-    }
-
     async fn get_versions(&self, url: &str) -> Result<Vec<Version>> {
         get_versions(self, url).await
     }
@@ -40,16 +36,6 @@ impl updater::Updater for Github {
         let path = rstr.strip_prefix("github://")?;
         entity.latest.as_ref().map(|v| format!("{}@{}", path, v))
     }
-}
-
-#[instrument(level = "debug")]
-pub fn url(resource: &str) -> Option<String> {
-    resource.strip_prefix("github://").map(|path| {
-        format!(
-            "https://api.github.com/repos/{}/git/matching-refs/tags",
-            path
-        )
-    })
 }
 
 #[instrument(level = "debug")]

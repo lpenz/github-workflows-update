@@ -11,11 +11,11 @@ use async_trait::async_trait;
 use crate::entity::Entity;
 use crate::error::Error;
 use crate::error::Result;
+use crate::resource::Resource;
 use crate::version::Version;
 
 #[async_trait]
 pub trait Updater: std::fmt::Debug {
-    fn url(&self, resource: &str) -> Option<String>;
     async fn get_versions(&self, url: &str) -> Result<Vec<Version>>;
     fn updated_line(&self, entity: &Entity) -> Option<String>;
 }
@@ -31,12 +31,6 @@ pub enum Upd {
 
 #[async_trait]
 impl Updater for Upd {
-    fn url(&self, resource: &str) -> Option<String> {
-        match self {
-            Upd::Docker(i) => i.url(resource),
-            Upd::Github(i) => i.url(resource),
-        }
-    }
     async fn get_versions(&self, url: &str) -> Result<Vec<Version>> {
         match self {
             Upd::Docker(i) => i.get_versions(url),
@@ -52,12 +46,12 @@ impl Updater for Upd {
     }
 }
 
-pub fn updater_for(resource: &str) -> Result<impl Updater> {
-    if let Some(_url) = docker::url(resource) {
+pub fn updater_for(resource: &Resource) -> Result<impl Updater> {
+    if resource.is_docker() {
         Ok(Upd::Docker(docker::Docker::default()))
-    } else if let Some(_url) = github::url(resource) {
+    } else if resource.is_github() {
         Ok(Upd::Github(github::Github::default()))
     } else {
-        Err(Error::UpdaterNotFound(resource.into()))
+        Err(Error::UpdaterNotFound(resource.to_string()))
     }
 }

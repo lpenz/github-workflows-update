@@ -16,10 +16,6 @@ pub struct Docker {}
 
 #[async_trait]
 impl updater::Updater for Docker {
-    fn url(&self, resource: &str) -> Option<String> {
-        url(resource)
-    }
-
     async fn get_versions(&self, url: &str) -> Result<Vec<Version>> {
         get_versions(url).await
     }
@@ -30,16 +26,6 @@ impl updater::Updater for Docker {
             .as_ref()
             .map(|v| format!("{}:{}", entity.resource, v))
     }
-}
-
-#[instrument(level = "debug")]
-pub fn url(resource: &str) -> Option<String> {
-    resource.strip_prefix("docker://").map(|path| {
-        format!(
-            "https://registry.hub.docker.com/v1/repositories/{}/tags",
-            path
-        )
-    })
 }
 
 #[instrument(level = "debug")]
