@@ -9,6 +9,7 @@ use std::fmt;
 
 use crate::error::Error;
 use crate::error::Result;
+use crate::updater;
 use crate::version::Version;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -80,6 +81,20 @@ impl Resource {
             ),
         }
     }
+
+    pub fn versioned_string(&self, version: &Version) -> String {
+        match self {
+            Resource::Docker { .. } => format!("{}:{}", self, version),
+            Resource::GhAction { .. } => format!("{}@{}", self, version),
+        }
+    }
+
+    pub async fn get_versions(&self) -> Result<Vec<Version>> {
+        match self {
+            Resource::Docker { .. } => updater::docker::get_versions(&self.url()).await,
+            Resource::GhAction { .. } => updater::github::get_versions(&self.url()).await,
+        }
+    }
 }
 
 impl fmt::Display for Resource {
@@ -89,7 +104,7 @@ impl fmt::Display for Resource {
             "{}",
             match self {
                 Resource::Docker { container } => format!("docker://{}", container),
-                Resource::GhAction { user, repo } => format!("github://{}/{}", user, repo),
+                Resource::GhAction { user, repo } => format!("{}/{}", user, repo),
             }
         )
     }

@@ -14,8 +14,6 @@ use tracing::{event, instrument, Level};
 
 use crate::entity::Entity;
 use crate::resource::Resource;
-use crate::updater::updater_for;
-use crate::updater::Updater;
 use crate::version::Version;
 
 #[derive(Debug)]
@@ -107,24 +105,11 @@ impl Server {
             Server::worker_send(worker_ch, resource, versions.clone()).await;
             return;
         }
-        let updater = match updater_for(&resource) {
-            Ok(updater) => updater,
-            Err(e) => {
-                event!(
-                    Level::ERROR,
-                    resource = %resource,
-                    error = %e,
-                    "error getting updater",
-                );
-                return;
-            }
-        };
-        let url = resource.url();
         let e = pending.entry(resource.clone()).or_default();
         if e.is_empty() {
             event!(Level::INFO, resource = %resource, "downloader task started");
             tokio::spawn(async move {
-                match updater.get_versions(&url).await {
+                match resource.get_versions().await {
                     Ok(versions) => {
                         Server::worker_send(worker_ch, resource, Some(versions)).await;
                     }
@@ -132,7 +117,6 @@ impl Server {
                         event!(
                             Level::ERROR,
                             resource = %resource,
-                            updater = ?updater,
                             error = %e,
                             "error in get_version"
                         );
@@ -235,9 +219,7 @@ impl Client {
             "got versions",
         );
         entity.latest = Some(latest.clone());
-        if let Ok(updater) = updater_for(&entity.resource) {
-            entity.updated_line = updater.updated_line(&entity);
-        }
+        entity.updated_line = Some(entity.resource.versioned_string(latest));
         entity
     }
 }

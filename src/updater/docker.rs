@@ -2,31 +2,11 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
-use async_trait::async_trait;
 use tracing::instrument;
 
-use crate::entity::Entity;
 use crate::error::Error;
 use crate::error::Result;
-use crate::updater;
 use crate::version::Version;
-
-#[derive(Debug, Default)]
-pub struct Docker {}
-
-#[async_trait]
-impl updater::Updater for Docker {
-    async fn get_versions(&self, url: &str) -> Result<Vec<Version>> {
-        get_versions(url).await
-    }
-
-    fn updated_line(&self, entity: &Entity) -> Option<String> {
-        entity
-            .latest
-            .as_ref()
-            .map(|v| format!("{}:{}", entity.resource, v))
-    }
-}
 
 #[instrument(level = "debug")]
 async fn get_json(url: &str) -> Result<serde_json::Value> {
