@@ -14,6 +14,8 @@ pub type Result<T, E = Error> = core::result::Result<T, E>;
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     // Own errors
+    #[error("could not parse resource {0}")]
+    ResourceParseError(String),
     #[error("updater not found for {0}")]
     UpdaterNotFound(String),
     #[error("unable to parse version in {0}")]

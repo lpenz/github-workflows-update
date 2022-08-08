@@ -9,7 +9,6 @@
 
 use anyhow::{anyhow, Result};
 use futures::future::join_all;
-use regex::Regex;
 use serde_yaml::Value;
 use std::collections::HashSet;
 use std::io;
@@ -21,8 +20,8 @@ use tracing::instrument;
 use tracing::Level;
 
 use crate::entity::Entity;
+use crate::entity::Resource;
 use crate::resolver;
-use crate::version::Version;
 
 #[derive(Debug)]
 pub struct Workflow {
@@ -76,27 +75,6 @@ impl Workflow {
     }
 }
 
-#[instrument(level = "debug")]
-fn reference_parse_version(
-    re_docker: &Regex,
-    re_github: &Regex,
-    reference: &str,
-) -> Option<(String, Version)> {
-    if let Some(m) = re_docker.captures(reference) {
-        return Some((
-            m.name("resource").unwrap().as_str().into(),
-            Version::new(m.name("version").unwrap().as_str())?,
-        ));
-    }
-    if let Some(m) = re_github.captures(reference) {
-        return Some((
-            format!("github://{}", m.name("userrepo").unwrap().as_str()),
-            Version::new(m.name("version").unwrap().as_str())?,
-        ));
-    }
-    None
-}
-
 #[instrument(level = "debug", skip(r))]
 fn buf_parse(r: impl io::BufRead) -> Result<HashSet<Entity>> {
     let data: serde_yaml::Mapping = serde_yaml::from_reader(r)?;
@@ -106,8 +84,6 @@ fn buf_parse(r: impl io::BufRead) -> Result<HashSet<Entity>> {
         .as_mapping()
         .ok_or_else(|| anyhow!("invalid type for jobs entry"))?;
     let mut ret = HashSet::default();
-    let re_docker = Regex::new(r"^(?P<resource>docker://[^:]+):(?P<version>[^:]+)$").unwrap();
-    let re_github = Regex::new(r"^(?P<userrepo>[^/]+/[^@]+)@(?P<version>[^@]+)$").unwrap();
     for (_, job) in jobs {
         if let Some(steps) = job.get(&Value::String("steps".into())) {
             let steps = steps
@@ -118,15 +94,8 @@ fn buf_parse(r: impl io::BufRead) -> Result<HashSet<Entity>> {
                     let reference = uses
                         .as_str()
                         .ok_or_else(|| anyhow!("invalid type for uses entry"))?;
-                    if let Some((resource, version)) =
-                        reference_parse_version(&re_docker, &re_github, reference)
-                    {
-                        let entity = Entity {
-                            line: reference.into(),
-                            resource,
-                            version,
-                            ..Default::default()
-                        };
+                    if let Ok((resource, version)) = Resource::parse(reference) {
+                        let entity = Entity::new(reference.into(), resource, version);
                         event!(Level::INFO, reference = reference, "parsed entity");
                         ret.insert(entity);
                     } else {

@@ -36,7 +36,8 @@ impl updater::Updater for Github {
     }
 
     fn updated_line(&self, entity: &Entity) -> Option<String> {
-        let path = entity.resource.strip_prefix("github://")?;
+        let rstr = entity.resource.to_string();
+        let path = rstr.strip_prefix("github://")?;
         entity.latest.as_ref().map(|v| format!("{}@{}", path, v))
     }
 }

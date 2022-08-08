@@ -207,12 +207,12 @@ impl Client {
 
     #[instrument(level = "debug")]
     pub async fn resolve_entity(&self, mut entity: Entity) -> Entity {
-        let versions = match self.get_versions(&entity.resource).await {
+        let versions = match self.get_versions(&entity.resource.to_string()).await {
             Ok(versions) => versions.unwrap_or_default(),
             Err(e) => {
                 event!(
                     Level::ERROR,
-                    resource = entity.resource,
+                    resource = %entity.resource,
                     error = %e,
                     "error getting version",
                 );
@@ -222,7 +222,7 @@ impl Client {
         if versions.is_empty() {
             event!(
                 Level::ERROR,
-                resource = entity.resource,
+                resource = %entity.resource,
                 versions = ?versions,
                 "no version found",
             );
@@ -230,7 +230,7 @@ impl Client {
         } else if !versions.contains(&entity.version) {
             event!(
                 Level::WARN,
-                resource = entity.resource,
+                resource = %entity.resource,
                 current = %entity.version,
                 versions = ?versions,
                 "current version not present in version list",
@@ -239,13 +239,13 @@ impl Client {
         let latest = versions.iter().max().unwrap();
         event!(
             Level::INFO,
-            resource = entity.resource,
+            resource = %entity.resource,
             versions = ?versions,
             latest = %latest,
             "got versions",
         );
         entity.latest = Some(latest.clone());
-        if let Ok(updater) = updater_for(&entity.resource) {
+        if let Ok(updater) = updater_for(&entity.resource.to_string()) {
             entity.updated_line = updater.updated_line(&entity);
         }
         entity
