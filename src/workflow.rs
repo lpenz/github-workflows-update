@@ -10,6 +10,7 @@
 use anyhow::{anyhow, Result};
 use futures::future::join_all;
 use serde_yaml::Value;
+use std::collections::HashMap;
 use std::collections::HashSet;
 use std::io;
 use std::path;
@@ -19,15 +20,16 @@ use tracing::event;
 use tracing::instrument;
 use tracing::Level;
 
-use crate::entity::Entity;
 use crate::resolver;
 use crate::resource::Resource;
+use crate::version::Version;
 
 #[derive(Debug)]
 pub struct Workflow {
     pub filename: path::PathBuf,
     pub contents: String,
-    pub entities: HashSet<Entity>,
+    pub uses: HashSet<(Resource, Version)>,
+    pub latest: HashMap<Resource, Version>,
 }
 
 impl Workflow {
@@ -37,33 +39,39 @@ impl Workflow {
         let mut file = tokio::fs::File::open(filename).await?;
         let mut contents = String::new();
         file.read_to_string(&mut contents).await?;
-        let entities = buf_parse(contents.as_bytes())?;
+        let uses = buf_parse(contents.as_bytes())?;
         Ok(Workflow {
             filename: filename.to_owned(),
             contents,
-            entities,
+            uses,
+            latest: Default::default(),
         })
     }
 
     #[instrument(level = "debug")]
     pub async fn resolve_entities(&mut self, resolver: &resolver::Server) {
-        let entities = std::mem::take(&mut self.entities);
-        let resolve_entity_tasks = entities
-            .into_iter()
-            .map(|e| (e, resolver.new_client()))
-            .map(|(e, resolver_client)| async move { resolver_client.resolve_entity(e).await });
-        self.entities = join_all(resolve_entity_tasks)
+        let latest_tasks = self.uses.iter().map(|rv| (rv, resolver.new_client())).map(
+            |((resource, current_version), resolver_client)| async move {
+                resolver_client
+                    .resolve_entity(resource, current_version)
+                    .await
+            },
+        );
+        self.latest = join_all(latest_tasks)
             .await
             .into_iter()
-            .collect::<HashSet<_>>();
+            .flatten()
+            .collect::<HashMap<_, _>>();
     }
 
     #[instrument(level = "debug")]
     pub async fn update_file(&self) -> Result<bool> {
         let mut contents = self.contents.clone();
-        for entity in &self.entities {
-            if let Some(updated_line) = &entity.updated_line {
-                contents = contents.replace(&entity.line, updated_line);
+        for (resource, current_version) in &self.uses {
+            if let Some(latest_version) = self.latest.get(resource) {
+                let current_line = resource.versioned_string(current_version);
+                let latest_line = resource.versioned_string(latest_version);
+                contents = contents.replace(&current_line, &latest_line);
             }
         }
         let updated = contents != self.contents;
@@ -76,7 +84,7 @@ impl Workflow {
 }
 
 #[instrument(level = "debug", skip(r))]
-fn buf_parse(r: impl io::BufRead) -> Result<HashSet<Entity>> {
+fn buf_parse(r: impl io::BufRead) -> Result<HashSet<(Resource, Version)>> {
     let data: serde_yaml::Mapping = serde_yaml::from_reader(r)?;
     let jobs = data
         .get(&Value::String("jobs".into()))
@@ -95,11 +103,19 @@ fn buf_parse(r: impl io::BufRead) -> Result<HashSet<Entity>> {
                         .as_str()
                         .ok_or_else(|| anyhow!("invalid type for uses entry"))?;
                     if let Ok((resource, version)) = Resource::parse(reference) {
-                        let entity = Entity::new(reference.into(), resource, version);
-                        event!(Level::INFO, reference = reference, "parsed entity");
-                        ret.insert(entity);
+                        event!(
+                            Level::INFO,
+                            resource = %resource,
+                            version = %version,
+                            "parsed entity"
+                        );
+                        ret.insert((resource, version));
                     } else {
-                        event!(Level::WARN, reference = reference, "entity not parsed");
+                        event!(
+                            Level::WARN,
+                            reference = reference,
+                            "unable to parse resource"
+                        );
                     }
                 }
             }

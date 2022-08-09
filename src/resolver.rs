@@ -12,7 +12,6 @@ use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tracing::{event, instrument, Level};
 
-use crate::entity::Entity;
 use crate::resource::Resource;
 use crate::version::Version;
 
@@ -180,32 +179,36 @@ impl Client {
     }
 
     #[instrument(level = "debug")]
-    pub async fn resolve_entity(&self, mut entity: Entity) -> Entity {
-        let versions = match self.get_versions(&entity.resource).await {
+    pub async fn resolve_entity(
+        &self,
+        resource: &Resource,
+        current_version: &Version,
+    ) -> Option<(Resource, Version)> {
+        let versions = match self.get_versions(resource).await {
             Ok(versions) => versions.unwrap_or_default(),
             Err(e) => {
                 event!(
                     Level::ERROR,
-                    resource = %entity.resource,
+                    resource = %resource,
                     error = %e,
                     "error getting version",
                 );
-                return entity;
+                return None;
             }
         };
         if versions.is_empty() {
             event!(
                 Level::ERROR,
-                resource = %entity.resource,
+                resource = %resource,
                 versions = ?versions,
                 "no version found",
             );
-            return entity;
-        } else if !versions.contains(&entity.version) {
+            return None;
+        } else if !versions.contains(current_version) {
             event!(
                 Level::WARN,
-                resource = %entity.resource,
-                current = %entity.version,
+                resource = %resource,
+                current = %current_version,
                 versions = ?versions,
                 "current version not present in version list",
             );
@@ -213,13 +216,11 @@ impl Client {
         let latest = versions.iter().max().unwrap();
         event!(
             Level::INFO,
-            resource = %entity.resource,
+            resource = %resource,
             versions = ?versions,
             latest = %latest,
             "got versions",
         );
-        entity.latest = Some(latest.clone());
-        entity.updated_line = Some(entity.resource.versioned_string(latest));
-        entity
+        Some((resource.clone(), latest.clone()))
     }
 }

@@ -27,7 +27,6 @@
 //!     [`updater::github`] upstreams.
 
 pub mod cmd;
-pub mod entity;
 pub mod error;
 pub mod processor;
 pub mod resolver;

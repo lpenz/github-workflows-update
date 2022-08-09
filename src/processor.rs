@@ -38,30 +38,31 @@ pub async fn process_file(
     workflow.resolve_entities(resolver).await;
     let dryrunmsg = if dryrun { " (dryrun)" } else { "" };
     let mut any_outdated = false;
-    for entity in &workflow.entities {
-        if let Some(ref latest) = entity.latest {
-            if &entity.version != latest {
-                any_outdated = true;
-                match output_format {
-                    OutputFormat::Standard => {
-                        println!(
-                            "{}: update {} from {} to {}{}",
-                            filename.display(),
-                            entity.resource,
-                            entity.version,
-                            latest,
-                            dryrunmsg
-                        );
-                    }
-                    OutputFormat::GithubWarning => {
-                        println!(
-                            "::warning file={}::update {} from {} to {}",
-                            filename.display(),
-                            entity.resource,
-                            entity.version,
-                            latest,
-                        );
-                    }
+    for (resource, current_version) in &workflow.uses {
+        if let Some(latest_version) = workflow.latest.get(resource) {
+            if current_version == latest_version {
+                continue;
+            }
+            any_outdated = true;
+            match output_format {
+                OutputFormat::Standard => {
+                    println!(
+                        "{}: update {} from {} to {}{}",
+                        filename.display(),
+                        resource,
+                        current_version,
+                        latest_version,
+                        dryrunmsg
+                    );
+                }
+                OutputFormat::GithubWarning => {
+                    println!(
+                        "::warning file={}::update {} from {} to {}",
+                        filename.display(),
+                        resource,
+                        current_version,
+                        latest_version,
+                    );
                 }
             }
         }
