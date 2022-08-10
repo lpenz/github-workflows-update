@@ -3,9 +3,6 @@
 // file 'LICENSE', which is part of this source code package.
 
 //! Workflow file parsing, into [`Workflow`] type.
-//!
-//! A workflow can have one or more [`Entity`]s that represent
-//! resource with a version.
 
 use anyhow::{anyhow, Result};
 use futures::future::join_all;
@@ -20,15 +17,21 @@ use tracing::event;
 use tracing::instrument;
 use tracing::Level;
 
-use crate::resolver;
+use crate::proxy;
 use crate::resource::Resource;
 use crate::version::Version;
 
 #[derive(Debug)]
 pub struct Workflow {
+    /// The name of the workflow file.
     pub filename: path::PathBuf,
+    /// Contents of the workflow file as a `String`.
     pub contents: String,
+    /// Set with all [`Resource`]s that the workflow `uses` along with the
+    /// current versions.
     pub uses: HashSet<(Resource, Version)>,
+    /// The latest version of each [`Resource`] as fetched from the
+    /// upstream docker or github repository.
     pub latest: HashMap<Resource, Version>,
 }
 
@@ -49,15 +52,17 @@ impl Workflow {
     }
 
     #[instrument(level = "debug")]
-    pub async fn resolve_entities(&mut self, resolver: &resolver::Server) {
-        let latest_tasks = self.uses.iter().map(|rv| (rv, resolver.new_client())).map(
-            |((resource, current_version), resolver_client)| async move {
-                resolver_client
-                    .resolve_entity(resource, current_version)
+    pub async fn fetch_latest_versions(&mut self, proxy_server: &proxy::Server) {
+        let tasks = self
+            .uses
+            .iter()
+            .map(|rv| (rv, proxy_server.new_client()))
+            .map(|((resource, current_version), proxy_client)| async move {
+                proxy_client
+                    .fetch_latest_version(resource, current_version)
                     .await
-            },
-        );
-        self.latest = join_all(latest_tasks)
+            });
+        self.latest = join_all(tasks)
             .await
             .into_iter()
             .flatten()

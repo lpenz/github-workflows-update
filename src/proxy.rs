@@ -2,9 +2,8 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
-//! A resolver [`Server`] that makes async requests and caches the
-//! result, and an async [`Client`] that fills the `entity.latest`
-//! field with the latest version of the upstream entity.
+//! The proxy [`Server`] spawns a task that makes async requests and
+//! caches the result, while async [`Client`] provides the API.
 
 use anyhow;
 use std::collections::HashMap;
@@ -179,7 +178,7 @@ impl Client {
     }
 
     #[instrument(level = "debug")]
-    pub async fn resolve_entity(
+    pub async fn fetch_latest_version(
         &self,
         resource: &Resource,
         current_version: &Version,

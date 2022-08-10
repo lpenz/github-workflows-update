@@ -13,7 +13,9 @@ use semver;
 /// Wrapper for the underlying external Version type
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Default, Hash)]
 pub struct Version {
+    /// The parsed, full-typed version
     pub version: Option<semver::Version>,
+    /// The original parsed string
     pub string: String,
 }
 

@@ -11,7 +11,7 @@ use tracing::instrument;
 use tracing::Level;
 
 use crate::cmd::OutputFormat;
-use crate::resolver;
+use crate::proxy;
 use crate::workflow::Workflow;
 
 /// Process the provided file.
@@ -20,7 +20,7 @@ use crate::workflow::Workflow;
 pub async fn process_file(
     dryrun: bool,
     output_format: OutputFormat,
-    resolver: &resolver::Server,
+    proxy_server: &proxy::Server,
     filename: impl AsRef<path::Path>,
 ) -> Result<bool> {
     let filename = filename.as_ref();
@@ -35,7 +35,7 @@ pub async fn process_file(
             return Err(e);
         }
     };
-    workflow.resolve_entities(resolver).await;
+    workflow.fetch_latest_versions(proxy_server).await;
     let dryrunmsg = if dryrun { " (dryrun)" } else { "" };
     let mut any_outdated = false;
     for (resource, current_version) in &workflow.uses {

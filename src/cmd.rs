@@ -14,7 +14,7 @@ use tracing::Level;
 use clap::ArgEnum;
 use clap::Parser;
 
-use crate::resolver;
+use crate::proxy;
 
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
@@ -42,7 +42,7 @@ pub enum OutputFormat {
 pub async fn main() -> Result<()> {
     let args = Args::parse();
     env_logger::init();
-    let resolver = resolver::Server::new();
+    let proxy_server = proxy::Server::new();
     let futures = ReadDirStream::new(tokio::fs::read_dir(".github/workflows").await?)
         .filter_map(|filename| match filename {
             Ok(filename) => Some(filename.path()),
@@ -60,7 +60,7 @@ pub async fn main() -> Result<()> {
             crate::processor::process_file(
                 args.dryrun,
                 args.output_format.unwrap_or_default(),
-                &resolver,
+                &proxy_server,
                 f,
             )
         })

@@ -13,23 +13,16 @@
 //!     [`semver`] with [`lenient_semver`]
 //! - Main functionality:
 //!   - [`processor`]: top level file processing function.
-//!   - [`workflow`]: workflow file parsing, into [`workflow::Workflow`] type. A
-//!     workflow can have one or more [`entity::Entity`]s that represent
-//!     resource with a version.
-//!   - [`entity`]: the [`entity::Entity`] type.
-//!   - [`resolver`]: a resolver [`resolver::Server`] that makes async
-//!     requests and caches the result, and an async
-//!     [`resolver::Client`] that fills the `entity.latest` field with
-//!     the latest version of the upstream entity.
-//!   - [`updater`]: the resolver can deal with different upstream
-//!     API's by using the [`updater::Upd`] trait, which is generic
-//!     over the currently supported [`updater::docker`] and
-//!     [`updater::github`] upstreams.
+//!   - [`workflow`]: workflow file parsing, into [`workflow::Workflow`] type.
+//!     The workflow has the the set of resource-versions that the workflow
+//!     `uses`, and also fetches all latest versions using the proxy.
+//!   - [`proxy`]: a proxy [`proxy::Server`] that makes async
+//!     requests and caches the results.
 
 pub mod cmd;
 pub mod error;
 pub mod processor;
-pub mod resolver;
+pub mod proxy;
 pub mod resource;
 pub mod updater;
 pub mod version;

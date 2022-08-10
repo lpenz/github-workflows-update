@@ -31,17 +31,11 @@ impl Resource {
     }
 
     pub fn is_docker(&self) -> bool {
-        match self {
-            Resource::Docker { .. } => true,
-            Resource::GhAction { .. } => false,
-        }
+        matches!(self, Resource::Docker { .. })
     }
 
     pub fn is_github(&self) -> bool {
-        match self {
-            Resource::Docker { .. } => false,
-            Resource::GhAction { .. } => true,
-        }
+        matches!(self, Resource::GhAction { .. })
     }
 
     #[instrument(level = "debug")]
