@@ -98,6 +98,26 @@ fn buf_parse(r: impl io::BufRead) -> Result<HashSet<(Resource, Version)>> {
         .ok_or_else(|| anyhow!("invalid type for jobs entry"))?;
     let mut ret = HashSet::default();
     for (_, job) in jobs {
+        if let Some(uses) = job.get(&Value::String("uses".into())) {
+            let reference = uses
+                .as_str()
+                .ok_or_else(|| anyhow!("invalid type for uses entry"))?;
+            if let Ok((resource, version)) = Resource::parse(reference) {
+                event!(
+                    Level::INFO,
+                    resource = %resource,
+                    version = %version,
+                    "parsed entity"
+                );
+                ret.insert((resource, version));
+            } else {
+                event!(
+                    Level::WARN,
+                    reference = reference,
+                    "unable to parse resource"
+                );
+            }
+        }
         if let Some(steps) = job.get(&Value::String("steps".into())) {
             let steps = steps
                 .as_sequence()
@@ -141,6 +161,8 @@ jobs:
       - uses: actions/checkout@v2
       - uses: docker://lpenz/omnilint:0.4
       - run: ls
+  rust:
+    uses: lpenz/ghworkflow-rust/.github/workflows/rust.yml@v0.4
 ";
     buf_parse(s.as_bytes())?;
     Ok(())
