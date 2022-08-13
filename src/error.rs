@@ -6,6 +6,7 @@
 
 use reqwest;
 use serde_json;
+use url;
 
 use thiserror;
 
@@ -18,7 +19,7 @@ pub enum Error {
     #[error("unable to parse version in {0}")]
     VersionParsing(String),
     #[error("{1} while getting {0}")]
-    HttpError(String, reqwest::StatusCode),
+    HttpError(url::Url, reqwest::StatusCode),
     #[error("{0} while parsing json")]
     JsonParsing(String),
 
@@ -27,4 +28,6 @@ pub enum Error {
     JsonError(#[from] serde_json::Error),
     #[error(transparent)]
     ReqwestError(#[from] reqwest::Error),
+    #[error(transparent)]
+    UrlParseError(#[from] url::ParseError),
 }

@@ -28,3 +28,4 @@ thiserror = "1.0.32"
 tokio = { version = "1.20.1", features = ["macros", "rt-multi-thread", "fs", "io-util"] }
 tokio-stream = { version = "0.1.9", features = ["fs"] }
 tracing = { version = "0.1.36", features = ["log"] }
+url = "2.2.2"

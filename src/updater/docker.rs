@@ -3,16 +3,17 @@
 // file 'LICENSE', which is part of this source code package.
 
 use tracing::instrument;
+use url::Url;
 
 use crate::error::Error;
 use crate::error::Result;
 use crate::version::Version;
 
 #[instrument(level = "debug")]
-async fn get_json(url: &str) -> Result<serde_json::Value> {
-    let response = reqwest::get(url).await?;
+async fn get_json(url: &Url) -> Result<serde_json::Value> {
+    let response = reqwest::get(url.as_str()).await?;
     if !response.status().is_success() {
-        return Err(Error::HttpError(url.into(), response.status()));
+        return Err(Error::HttpError(url.clone(), response.status()));
     }
     Ok(response.json::<serde_json::Value>().await?)
 }
@@ -42,7 +43,7 @@ fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
 }
 
 #[instrument(level = "debug")]
-pub async fn get_versions(url: &str) -> Result<Vec<Version>> {
+pub async fn get_versions(url: &Url) -> Result<Vec<Version>> {
     let data = get_json(url).await?;
     let versions = parse_versions(data)?;
     Ok(versions)

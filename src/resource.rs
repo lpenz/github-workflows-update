@@ -7,6 +7,7 @@
 use regex::Regex;
 use std::fmt;
 use tracing::instrument;
+use url::Url;
 
 use crate::error::Error;
 use crate::error::Result;
@@ -104,8 +105,8 @@ impl Resource {
     }
 
     #[instrument(level = "debug")]
-    pub fn url(&self) -> String {
-        match self {
+    pub fn url(&self) -> Result<Url> {
+        let url_string = match self {
             Resource::Docker { container } => format!(
                 "https://registry.hub.docker.com/v1/repositories/{}/tags",
                 container
@@ -118,7 +119,8 @@ impl Resource {
                 "https://api.github.com/repos/{}/{}/git/matching-refs/tags",
                 user, repo
             ),
-        }
+        };
+        Ok(Url::parse(&url_string)?)
     }
 
     #[instrument(level = "debug")]
@@ -135,9 +137,9 @@ impl Resource {
     #[instrument(level = "debug")]
     pub async fn get_versions(&self) -> Result<Vec<Version>> {
         if self.is_docker() {
-            updater::docker::get_versions(&self.url()).await
+            updater::docker::get_versions(&self.url()?).await
         } else if self.is_github() {
-            updater::github::get_versions(&self.url()).await
+            updater::github::get_versions(&self.url()?).await
         } else {
             panic!("unknown resource type");
         }

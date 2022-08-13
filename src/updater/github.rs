@@ -4,15 +4,16 @@
 
 use reqwest::header::USER_AGENT;
 use tracing::instrument;
+use url::Url;
 
 use crate::error::Error;
 use crate::error::Result;
 use crate::version::Version;
 
 #[instrument(level = "debug")]
-async fn get_json(url: &str) -> Result<serde_json::Value> {
+async fn get_json(url: &Url) -> Result<serde_json::Value> {
     let client = reqwest::Client::new();
-    let mut builder = client.get(url);
+    let mut builder = client.get(url.as_str());
     builder = builder.header(USER_AGENT, "reqwest");
     builder = builder.header("Accept", "application/vnd.github.v3+json");
     if let Ok(token) = std::env::var("PERSONAL_TOKEN") {
@@ -20,7 +21,7 @@ async fn get_json(url: &str) -> Result<serde_json::Value> {
     }
     let response = builder.send().await?;
     if !response.status().is_success() {
-        return Err(Error::HttpError(url.into(), response.status()));
+        return Err(Error::HttpError(url.clone(), response.status()));
     }
     Ok(response.json::<serde_json::Value>().await?)
 }
@@ -56,7 +57,7 @@ fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
 }
 
 #[instrument(level = "debug")]
-pub async fn get_versions(url: &str) -> Result<Vec<Version>> {
+pub async fn get_versions(url: &Url) -> Result<Vec<Version>> {
     let data = get_json(url).await?;
     let versions = parse_versions(data)?;
     Ok(versions)
