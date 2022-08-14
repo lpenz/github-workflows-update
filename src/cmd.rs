@@ -19,7 +19,7 @@ use crate::proxy;
 #[derive(Parser, Debug)]
 #[clap(author, version, about, long_about = None)]
 pub struct Args {
-    /// Don't update the workflows, just print the outdated actions
+    /// Don't update the workflows, just print what would be done
     #[clap(short = 'n', long = "dry-run")]
     pub dryrun: bool,
     /// Output format for the outdated action messages

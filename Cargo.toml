@@ -8,6 +8,7 @@ license = "MIT"
 readme = "README.md"
 homepage = "https://github.com/lpenz/github-workflows-update"
 repository = "https://github.com/lpenz/github-workflows-update"
+build = "build.rs"
 categories = ["command-line-utilities"]
 keywords = ["github-action", "version-update"]
 
@@ -29,3 +30,22 @@ tokio = { version = "1.20.1", features = ["macros", "rt-multi-thread", "fs", "io
 tokio-stream = { version = "0.1.9", features = ["fs"] }
 tracing = { version = "0.1.36", features = ["log"] }
 url = "2.2.2"
+
+[build-dependencies]
+anyhow = "1.0.59"
+man = "0.3.0"
+
+[package.metadata.deb]
+section = "utils"
+extended-description = """\
+github-workflows-update reads all github workflow and checks the latest
+available versions of all github actions and workflow dispatches used, showing
+which ones can be updated and optionally updating them automatically.
+"""
+assets = [
+    ["target/release/github-workflows-update.1", "usr/share/man/man1/", "644"],
+    ["target/release/github-workflows-update", "usr/bin/", "755"],
+    ["LICENSE", "usr/share/doc/github-workflows-update/", "644"],
+    ["AUTHORS", "usr/share/doc/github-workflows-update/", "644"],
+    ["README.md", "usr/share/doc/github-workflows-update/", "644"],
+]

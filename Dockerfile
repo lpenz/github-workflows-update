@@ -7,6 +7,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /src
 COPY Cargo.* ./
 COPY src ./src
+COPY build.rs ./
 RUN set -e -x; \
     apt-get update; \
     apt-get install -y --no-install-recommends libssl-dev pkg-config; \

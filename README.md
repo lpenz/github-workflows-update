@@ -6,4 +6,7 @@
 
 # github-workflows-update
 
-Check github workflows for actions that can be updated
+github-workflows-update reads all github workflow and checks the latest
+available versions of all github actions and workflow dispatches used, showing
+which ones can be updated and optionally updating them automatically.
+
