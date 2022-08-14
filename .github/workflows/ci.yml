@@ -17,6 +17,7 @@ jobs:
       publish_packagecloud_repository: debian/debian/bullseye
     secrets:
       CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
   docker-build:
     runs-on: ubuntu-latest
     steps:
