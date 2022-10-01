@@ -11,26 +11,26 @@ use tokio_stream::StreamExt;
 use tracing::event;
 use tracing::Level;
 
-use clap::ArgEnum;
 use clap::Parser;
+use clap::ValueEnum;
 
 use crate::proxy;
 
 #[derive(Parser, Debug)]
-#[clap(author, version, about, long_about = None)]
+#[command(author, version, about, long_about = None)]
 pub struct Args {
     /// Don't update the workflows, just print what would be done
     #[clap(short = 'n', long = "dry-run")]
     pub dryrun: bool,
     /// Output format for the outdated action messages
-    #[clap(short = 'f', long, arg_enum, value_parser)]
+    #[clap(short = 'f', long, value_enum, value_parser)]
     pub output_format: Option<OutputFormat>,
     /// Return error if any outdated actions are found
     #[clap(long)]
     pub error_on_outdated: bool,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ArgEnum, Default, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Default, Debug)]
 pub enum OutputFormat {
     #[default]
     Standard,
