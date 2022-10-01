@@ -108,7 +108,7 @@ impl Resource {
     pub fn url(&self) -> Result<Url> {
         let url_string = match self {
             Resource::Docker { container } => format!(
-                "https://registry.hub.docker.com/v1/repositories/{}/tags",
+                "https://registry.hub.docker.com/v2/repositories/{}/tags",
                 container
             ),
             Resource::GhAction { user, repo } => format!(

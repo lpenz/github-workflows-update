@@ -20,20 +20,26 @@ async fn get_json(url: &Url) -> Result<serde_json::Value> {
 
 #[instrument(level = "debug")]
 fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
-    data.as_array()
-        .ok_or_else(|| Error::JsonParsing("invalid type for layer object list".into()))?
+    data.as_object()
+        .ok_or_else(|| Error::JsonParsing("invalid type for top object".into()))?
+        .get("results")
+        .ok_or_else(|| Error::JsonParsing("could not find \"results\" member".into()))?
+        .as_array()
+        .ok_or_else(|| Error::JsonParsing("invalid type for \"results\" list".into()))?
         .iter()
-        .map(|layer| {
-            layer
+        .map(|result| {
+            result
                 .as_object()
-                .ok_or_else(|| Error::JsonParsing("invalid type for layer object".into()))?
+                .ok_or_else(|| Error::JsonParsing("invalid type for \"result\" object".into()))?
                 .get("name")
                 .ok_or_else(|| {
-                    Error::JsonParsing("\"name\" field not found in layer object".into())
+                    Error::JsonParsing("\"name\" field not found in \"result\" object".into())
                 })
                 .map(|version_value| {
                     let version_str = version_value.as_str().ok_or_else(|| {
-                        Error::JsonParsing("invalid type for \"name\" field in layer object".into())
+                        Error::JsonParsing(
+                            "invalid type for \"name\" field in \"result\" object".into(),
+                        )
                     })?;
                     Version::new(version_str)
                         .ok_or_else(|| Error::VersionParsing(version_str.into()))
@@ -51,7 +57,7 @@ pub async fn get_versions(url: &Url) -> Result<Vec<Version>> {
 
 #[test]
 fn test_docker_parse_versions() -> Result<()> {
-    let json_str = r#"[{"layer": "", "name": "latest"}, {"layer": "", "name": "0.2"}, {"layer": "", "name": "0.3"}, {"layer": "", "name": "0.4"}, {"layer": "", "name": "0.6"}, {"layer": "", "name": "0.7"}, {"layer": "", "name": "0.8.0"}, {"layer": "", "name": "0.9.0"}]"#;
+    let json_str = r#"{"results":[{"name": "latest"}, {"name": "0.2"}, {"name": "0.3"}, {"name": "0.4"}, {"name": "0.6"}, {"name": "0.7"}, {"name": "0.8.0"}, {"name": "0.9.0"}]}"#;
     let json_value: serde_json::Value = serde_json::from_str(json_str)?;
     let versions = parse_versions(json_value)?
         .into_iter()
