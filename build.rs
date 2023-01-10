@@ -70,7 +70,7 @@ which ones can be updated and optionally updating them automatically.",
                 .command("github-workflows-update -n"),
         )
         .render();
-    File::create(&man_path)?.write_all(manpage.as_bytes())?;
+    File::create(man_path)?.write_all(manpage.as_bytes())?;
     Ok(())
 }
 
