@@ -92,13 +92,13 @@ impl Workflow {
 fn buf_parse(r: impl io::BufRead) -> Result<HashSet<(Resource, Version)>> {
     let data: serde_yaml::Mapping = serde_yaml::from_reader(r)?;
     let jobs = data
-        .get(&Value::String("jobs".into()))
+        .get(Value::String("jobs".into()))
         .ok_or_else(|| anyhow!("jobs entry not found"))?
         .as_mapping()
         .ok_or_else(|| anyhow!("invalid type for jobs entry"))?;
     let mut ret = HashSet::default();
     for (_, job) in jobs {
-        if let Some(uses) = job.get(&Value::String("uses".into())) {
+        if let Some(uses) = job.get(Value::String("uses".into())) {
             let reference = uses
                 .as_str()
                 .ok_or_else(|| anyhow!("invalid type for uses entry"))?;
@@ -118,12 +118,12 @@ fn buf_parse(r: impl io::BufRead) -> Result<HashSet<(Resource, Version)>> {
                 );
             }
         }
-        if let Some(steps) = job.get(&Value::String("steps".into())) {
+        if let Some(steps) = job.get(Value::String("steps".into())) {
             let steps = steps
                 .as_sequence()
                 .ok_or_else(|| anyhow!("invalid type for steps entry"))?;
             for step in steps {
-                if let Some(uses) = step.get(&Value::String("uses".into())) {
+                if let Some(uses) = step.get(Value::String("uses".into())) {
                     let reference = uses
                         .as_str()
                         .ok_or_else(|| anyhow!("invalid type for uses entry"))?;
