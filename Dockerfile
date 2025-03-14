@@ -2,7 +2,7 @@
 # This file is subject to the terms and conditions defined in
 # file 'LICENSE', which is part of this source code package.
 
-FROM docker.io/rust:1.82-slim-bookworm AS build
+FROM docker.io/rust:1.85-slim-bookworm AS build
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /src
 COPY Cargo.* ./

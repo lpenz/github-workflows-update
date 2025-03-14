@@ -6,9 +6,9 @@
 
 use anyhow::Result;
 use std::path;
+use tracing::Level;
 use tracing::event;
 use tracing::instrument;
-use tracing::Level;
 
 use crate::cmd::OutputFormat;
 use crate::proxy;

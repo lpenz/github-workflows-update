@@ -6,10 +6,10 @@
 
 use anyhow::Result;
 use futures::future::join_all;
-use tokio_stream::wrappers::ReadDirStream;
 use tokio_stream::StreamExt;
-use tracing::event;
+use tokio_stream::wrappers::ReadDirStream;
 use tracing::Level;
+use tracing::event;
 
 use clap::Parser;
 use clap::ValueEnum;

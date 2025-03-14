@@ -4,7 +4,7 @@
 
 //! Workflow file parsing, into [`Workflow`] type.
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use futures::future::join_all;
 use serde_yaml::Value;
 use std::collections::HashMap;
@@ -13,9 +13,9 @@ use std::io;
 use std::path;
 use tokio::io::AsyncReadExt;
 use tokio::io::AsyncWriteExt;
+use tracing::Level;
 use tracing::event;
 use tracing::instrument;
-use tracing::Level;
 
 use crate::proxy;
 use crate::resource::Resource;

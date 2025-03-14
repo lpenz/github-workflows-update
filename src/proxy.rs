@@ -9,7 +9,7 @@ use anyhow;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
-use tracing::{event, instrument, Level};
+use tracing::{Level, event, instrument};
 
 use crate::resource::Resource;
 use crate::version::Version;
