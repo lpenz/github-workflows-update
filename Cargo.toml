@@ -13,9 +13,9 @@ categories = ["command-line-utilities"]
 keywords = ["github-action", "version-update"]
 
 [dependencies]
-anyhow = "1.0.97"
+anyhow = "1.0.98"
 async-trait = "0.1.88"
-clap = { version = "4.5.35", features = ["derive"] }
+clap = { version = "4.5.37", features = ["derive"] }
 env_logger = "0.11.8"
 futures = "0.3.31"
 lenient_semver = "0.4.2"
@@ -24,7 +24,7 @@ regex = "1.11.1"
 reqwest = { version = "0.12.15", features = ["json"] }
 semver = "1.0.26"
 serde_json = "1.0.140"
-serde_yaml = "0.9.34"
+serde_yml = "0.0.12"
 thiserror = "2.0.12"
 tokio = { version = "1.44.2", features = ["macros", "rt-multi-thread", "fs", "io-util"] }
 tokio-stream = { version = "0.1.17", features = ["fs"] }
@@ -32,7 +32,7 @@ tracing = { version = "0.1.41", features = ["log"] }
 url = "2.5.4"
 
 [build-dependencies]
-anyhow = "1.0.97"
+anyhow = "1.0.98"
 man = "0.3.0"
 
 [package.metadata.deb]
