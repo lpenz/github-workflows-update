@@ -1,20 +1,23 @@
 ---
 name: CI
-on: [ workflow_dispatch, push, pull_request ]
+on:  # yamllint disable-line rule:truthy
+  - workflow_dispatch
+  - push
+  - pull_request
 jobs:
   omnilint:
     uses: lpenz/omnilint/.github/workflows/omnilint.yml@v0.5.2
   rust:
-    uses: lpenz/ghworkflow-rust/.github/workflows/rust.yml@v0.23.4
+    uses: lpenz/ghworkflow-rust/.github/workflows/rust.yml@v0.26.0
     with:
       coveralls: true
       deb: true
       publish_cratesio: true
       publish_github_release: true
       publish_github_release_files: |
-        target/release/github-workflows-update target/release/github-workflows-update.1
-      publish_packagecloud: true
-      publish_packagecloud_repository: |
+        target/release/github-workflows-update
+        target/release/github-workflows-update.1
+      publish_packagecloud_repository_deb: |
         ["debian/debian/bookworm",
          "ubuntu/ubuntu/noble"]
     secrets:
@@ -24,21 +27,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.2.2
-      - uses: docker/build-push-action@v6.15.0
+      - uses: docker/build-push-action@v6.18.0
         with:
           push: false
   dockerhub:
-    needs: [ omnilint, rust, docker-build ]
+    needs: [omnilint, rust, docker-build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.2.2
       - id: version
-        uses: docker://lpenz/ghaction-version-gen:0.14.1
+        uses: docker://lpenz/ghaction-version-gen:0.16.1
       - uses: docker/login-action@v3.4.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
-      - uses: docker/build-push-action@v6.15.0
+      - uses: docker/build-push-action@v6.18.0
         with:
           push: ${{ steps.version.outputs.version_docker_ci != 'null' }}
           tags: ${{ github.repository }}:${{ steps.version.outputs.version_docker_ci }}
