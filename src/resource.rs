@@ -107,18 +107,15 @@ impl Resource {
     #[instrument(level = "debug")]
     pub fn url(&self) -> Result<Url> {
         let url_string = match self {
-            Resource::Docker { container } => format!(
-                "https://registry.hub.docker.com/v2/repositories/{}/tags",
-                container
-            ),
-            Resource::GhAction { user, repo } => format!(
-                "https://api.github.com/repos/{}/{}/git/matching-refs/tags",
-                user, repo
-            ),
-            Resource::GhWorkflow { user, repo, .. } => format!(
-                "https://api.github.com/repos/{}/{}/git/matching-refs/tags",
-                user, repo
-            ),
+            Resource::Docker { container } => {
+                format!("https://registry.hub.docker.com/v2/repositories/{container}/tags")
+            }
+            Resource::GhAction { user, repo } => {
+                format!("https://api.github.com/repos/{user}/{repo}/git/matching-refs/tags")
+            }
+            Resource::GhWorkflow { user, repo, .. } => {
+                format!("https://api.github.com/repos/{user}/{repo}/git/matching-refs/tags")
+            }
         };
         Ok(Url::parse(&url_string)?)
     }
@@ -126,9 +123,9 @@ impl Resource {
     #[instrument(level = "debug")]
     pub fn versioned_string(&self, version: &Version) -> String {
         if self.is_docker() {
-            format!("{}:{}", self, version)
+            format!("{self}:{version}")
         } else if self.is_github() {
-            format!("{}@{}", self, version)
+            format!("{self}@{version}")
         } else {
             panic!("unknown resource type");
         }
@@ -152,13 +149,13 @@ impl fmt::Display for Resource {
             f,
             "{}",
             match self {
-                Resource::Docker { container } => format!("docker://{}", container),
-                Resource::GhAction { user, repo } => format!("{}/{}", user, repo),
+                Resource::Docker { container } => format!("docker://{container}"),
+                Resource::GhAction { user, repo } => format!("{user}/{repo}"),
                 Resource::GhWorkflow {
                     user,
                     repo,
                     workflow,
-                } => format!("{}/{}/.github/workflows/{}", user, repo, workflow),
+                } => format!("{user}/{repo}/.github/workflows/{workflow}"),
             }
         )
     }

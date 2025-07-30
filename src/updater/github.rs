@@ -17,7 +17,7 @@ async fn get_json(url: &Url) -> Result<serde_json::Value> {
     builder = builder.header(USER_AGENT, "reqwest");
     builder = builder.header("Accept", "application/vnd.github.v3+json");
     if let Ok(token) = std::env::var("PERSONAL_TOKEN") {
-        builder = builder.header("Authorization", format!("token {}", token));
+        builder = builder.header("Authorization", format!("token {token}"));
     }
     let response = builder.send().await?;
     if !response.status().is_success() {
@@ -44,8 +44,7 @@ fn parse_versions(data: serde_json::Value) -> Result<Vec<Version>> {
                     })?;
                     let m = re_ref.captures(version_str).ok_or_else(|| {
                         Error::JsonParsing(format!(
-                            "could not match github ref {} to tag regex",
-                            version_str
+                            "could not match github ref {version_str} to tag regex"
                         ))
                     })?;
                     let version_str = m.name("version").unwrap().as_str();
