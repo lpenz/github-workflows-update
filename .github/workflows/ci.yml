@@ -8,7 +8,7 @@ jobs:
   omnilint:
     uses: lpenz/omnilint/.github/workflows/omnilint.yml@v0.5.2
   rust:
-    uses: lpenz/ghworkflow-rust/.github/workflows/rust.yml@v0.26.0
+    uses: lpenz/ghworkflow-rust/.github/workflows/rust.yml@v0.26.2
     with:
       coveralls: true
       deb: true

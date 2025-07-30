@@ -15,18 +15,18 @@ keywords = ["github-action", "version-update"]
 [dependencies]
 anyhow = "1.0.98"
 async-trait = "0.1.88"
-clap = { version = "4.5.37", features = ["derive"] }
+clap = { version = "4.5.42", features = ["derive"] }
 env_logger = "0.11.8"
 futures = "0.3.31"
 lenient_semver = "0.4.2"
 once_cell = "1.21.3"
 regex = "1.11.1"
-reqwest = { version = "0.12.15", features = ["json"] }
+reqwest = { version = "0.12.22", default-features = false, features = ["rustls-tls", "json"] }
 semver = "1.0.26"
-serde_json = "1.0.140"
+serde_json = "1.0.141"
 serde_yml = "0.0.12"
 thiserror = "2.0.12"
-tokio = { version = "1.44.2", features = ["macros", "rt-multi-thread", "fs", "io-util"] }
+tokio = { version = "1.47.0", features = ["macros", "rt-multi-thread", "fs", "io-util"] }
 tokio-stream = { version = "0.1.17", features = ["fs"] }
 tracing = { version = "0.1.41", features = ["log"] }
 url = "2.5.4"
