@@ -6,7 +6,7 @@
 
 use anyhow::{Result, anyhow};
 use futures::future::join_all;
-use serde_yml::Value;
+use serde_norway::Value;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::io;
@@ -90,7 +90,7 @@ impl Workflow {
 
 #[instrument(level = "debug", skip(r))]
 fn buf_parse(r: impl io::BufRead) -> Result<HashSet<(Resource, Version)>> {
-    let data: serde_yml::Mapping = serde_yml::from_reader(r)?;
+    let data: serde_norway::Mapping = serde_norway::from_reader(r)?;
     let jobs = data
         .get(Value::String("jobs".into()))
         .ok_or_else(|| anyhow!("jobs entry not found"))?
