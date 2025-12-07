@@ -1,9 +1,6 @@
 ---
 name: CI
-on:  # yamllint disable-line rule:truthy
-  - workflow_dispatch
-  - push
-  - pull_request
+on: [workflow_dispatch, push, pull_request]  # yamllint disable-line rule:truthy
 jobs:
   omnilint:
     uses: lpenz/omnilint/.github/workflows/omnilint.yml@v0.5.2
@@ -26,7 +23,7 @@ jobs:
   docker-build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5.0.0
+      - uses: actions/checkout@v6.0.1
       - uses: docker/build-push-action@v6.18.0
         with:
           push: false
@@ -34,14 +31,15 @@ jobs:
     needs: [omnilint, rust, docker-build]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5.0.0
+      - uses: actions/checkout@v6.0.1
       - id: version
-        uses: docker://lpenz/ghaction-version-gen:0.17.3
-      - uses: docker/login-action@v3.5.0
+        uses: docker://lpenz/ghaction-version-gen:0.18.0
+      - uses: docker/login-action@v3.6.0
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - uses: docker/build-push-action@v6.18.0
         with:
           push: ${{ steps.version.outputs.version_docker_ci != 'null' }}
-          tags: ${{ github.repository }}:${{ steps.version.outputs.version_docker_ci }}
+          tags: ${{ github.repository }}:${{ steps.version.outputs.version_docker_ci
+            }}
