@@ -1,7 +1,7 @@
 [package]
 name = "github-workflows-update"
 description = "Check github workflows for actions that can be updated"
-version = "0.3.29"
+version = "0.3.30"
 authors = ["Leandro Lisboa Penz <lpenz@lpenz.org>"]
 edition = "2024"
 license = "MIT"
@@ -13,26 +13,26 @@ categories = ["command-line-utilities"]
 keywords = ["github-action", "version-update"]
 
 [dependencies]
-anyhow = "1.0.100"
+anyhow = "1.0.101"
 async-trait = "0.1.89"
-clap = { version = "4.5.53", features = ["derive"] }
+clap = { version = "4.5.57", features = ["derive"] }
 env_logger = "0.11.8"
 futures = "0.3.31"
 lenient_semver = "0.4.2"
 once_cell = "1.21.3"
-regex = "1.12.2"
-reqwest = { version = "0.13.1", default-features = false, features = ["json"] }
+regex = "1.12.3"
+reqwest = { version = "0.13.2", default-features = false, features = ["json"] }
 semver = "1.0.27"
-serde_json = "1.0.148"
+serde_json = "1.0.149"
 serde_norway = "0.9.42"
-thiserror = "2.0.17"
-tokio = { version = "1.48.0", features = ["macros", "rt-multi-thread", "fs", "io-util"] }
-tokio-stream = { version = "0.1.17", features = ["fs"] }
+thiserror = "2.0.18"
+tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread", "fs", "io-util"] }
+tokio-stream = { version = "0.1.18", features = ["fs"] }
 tracing = { version = "0.1.44", features = ["log"] }
-url = "2.5.7"
+url = "2.5.8"
 
 [build-dependencies]
-anyhow = "1.0.100"
+anyhow = "1.0.101"
 man = "0.3.0"
 
 [package.metadata.deb]
