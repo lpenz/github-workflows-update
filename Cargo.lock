@@ -512,7 +512,7 @@ checksum = "e629b9b98ef3dd8afe6ca2bd0f89306cec16d43d907889945bc5d6687f2f13c7"
 
 [[package]]
 name = "github-workflows-update"
-version = "0.3.31"
+version = "0.4.0"
 dependencies = [
  "async-trait",
  "clap",
