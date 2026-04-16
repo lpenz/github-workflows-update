@@ -3,6 +3,10 @@
 // file 'LICENSE', which is part of this source code package.
 
 use clap::CommandFactory;
+use clap_complete::generate_to;
+use clap_complete::shells::Bash;
+use clap_complete::shells::Fish;
+use clap_complete::shells::Zsh;
 use color_eyre::{Result, eyre::Context, eyre::eyre};
 use std::env;
 use std::fs::{self, File};
@@ -51,6 +55,11 @@ fn main() -> Result<()> {
 
     fs::create_dir_all(&outdir)?;
     generate_man_page(&outdir)?;
+
+    let mut cmd = Cli::command();
+    generate_to(Bash, &mut cmd, "github-workflows-update", &outdir)?;
+    generate_to(Fish, &mut cmd, "github-workflows-update", &outdir)?;
+    generate_to(Zsh, &mut cmd, "github-workflows-update", &outdir)?;
 
     Ok(())
 }

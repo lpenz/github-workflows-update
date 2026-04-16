@@ -33,6 +33,7 @@ url = "2.5.8"
 
 [build-dependencies]
 clap = { version = "4.6.0", features = ["derive"] }
+clap_complete = "4.6.2"
 clap2man = "0.1.1"
 color-eyre = "0.6.3"
 man = "0.3.0"
@@ -50,4 +51,7 @@ assets = [
     ["LICENSE", "usr/share/doc/github-workflows-update/", "644"],
     ["AUTHORS", "usr/share/doc/github-workflows-update/", "644"],
     ["README.md", "usr/share/doc/github-workflows-update/", "644"],
+    ["target/release/github-workflows-update.bash", "/usr/share/bash-completion/completions/", "644"],
+    ["target/release/_github-workflows-update", "/usr/share/zsh/site-functions/", "644"],
+    ["target/release/github-workflows-update.fish", "/usr/share/fish/vendor_completions.d/", "644"],
 ]
