@@ -4,7 +4,7 @@
 
 //! Workflow file parsing, into [`Workflow`] type.
 
-use anyhow::{Result, anyhow};
+use color_eyre::{Result, eyre::eyre};
 use futures::future::join_all;
 use serde_norway::Value;
 use std::collections::HashMap;
@@ -93,15 +93,15 @@ fn buf_parse(r: impl io::BufRead) -> Result<HashSet<(Resource, Version)>> {
     let data: serde_norway::Mapping = serde_norway::from_reader(r)?;
     let jobs = data
         .get(Value::String("jobs".into()))
-        .ok_or_else(|| anyhow!("jobs entry not found"))?
+        .ok_or_else(|| eyre!("jobs entry not found"))?
         .as_mapping()
-        .ok_or_else(|| anyhow!("invalid type for jobs entry"))?;
+        .ok_or_else(|| eyre!("invalid type for jobs entry"))?;
     let mut ret = HashSet::default();
     for (_, job) in jobs {
         if let Some(uses) = job.get(Value::String("uses".into())) {
             let reference = uses
                 .as_str()
-                .ok_or_else(|| anyhow!("invalid type for uses entry"))?;
+                .ok_or_else(|| eyre!("invalid type for uses entry"))?;
             if let Ok((resource, version)) = Resource::parse(reference) {
                 event!(
                     Level::INFO,
@@ -121,12 +121,12 @@ fn buf_parse(r: impl io::BufRead) -> Result<HashSet<(Resource, Version)>> {
         if let Some(steps) = job.get(Value::String("steps".into())) {
             let steps = steps
                 .as_sequence()
-                .ok_or_else(|| anyhow!("invalid type for steps entry"))?;
+                .ok_or_else(|| eyre!("invalid type for steps entry"))?;
             for step in steps {
                 if let Some(uses) = step.get(Value::String("uses".into())) {
                     let reference = uses
                         .as_str()
-                        .ok_or_else(|| anyhow!("invalid type for uses entry"))?;
+                        .ok_or_else(|| eyre!("invalid type for uses entry"))?;
                     if let Ok((resource, version)) = Resource::parse(reference) {
                         event!(
                             Level::INFO,

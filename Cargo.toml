@@ -13,9 +13,9 @@ categories = ["command-line-utilities"]
 keywords = ["github-action", "version-update"]
 
 [dependencies]
-anyhow = "1.0.102"
 async-trait = "0.1.89"
 clap = { version = "4.6.1", features = ["derive"] }
+color-eyre = "0.6.3"
 env_logger = "0.11.10"
 futures = "0.3.32"
 lenient_semver = "0.4.2"
@@ -32,7 +32,7 @@ tracing = { version = "0.1.44", features = ["log"] }
 url = "2.5.8"
 
 [build-dependencies]
-anyhow = "1.0.102"
+color-eyre = "0.6.3"
 man = "0.3.0"
 
 [package.metadata.deb]

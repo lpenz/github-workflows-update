@@ -5,7 +5,7 @@
 //! The proxy [`Server`] spawns a task that makes async requests and
 //! caches the result, while async [`Client`] provides the API.
 
-use anyhow;
+use color_eyre::Result;
 use std::collections::HashMap;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
@@ -166,7 +166,7 @@ impl Default for Server {
 
 impl Client {
     #[instrument(level = "debug")]
-    pub async fn get_versions(&self, resource: &Resource) -> anyhow::Result<Option<Vec<Version>>> {
+    pub async fn get_versions(&self, resource: &Resource) -> Result<Option<Vec<Version>>> {
         let (client_ch, response) = oneshot::channel();
         self.server_ch
             .send(Message::Request {

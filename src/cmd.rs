@@ -4,7 +4,7 @@
 
 //! Command line arguments parsing and main function.
 
-use anyhow::Result;
+use color_eyre::Result;
 use futures::future::join_all;
 use tokio_stream::StreamExt;
 use tokio_stream::wrappers::ReadDirStream;

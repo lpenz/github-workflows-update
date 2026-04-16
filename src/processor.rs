@@ -4,7 +4,7 @@
 
 //! Top level file processing function.
 
-use anyhow::Result;
+use color_eyre::Result;
 use std::path;
 use tracing::Level;
 use tracing::event;
