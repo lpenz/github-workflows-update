@@ -195,6 +195,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "clap2man"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cfb68d8278fa7089c91066c8166a426021bb339de4ea72ccc9a08a1f0c13653f"
+dependencies = [
+ "clap",
+ "man",
+ "thiserror 2.0.18",
+]
+
+[[package]]
 name = "clap_builder"
 version = "4.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -496,6 +507,7 @@ version = "0.3.31"
 dependencies = [
  "async-trait",
  "clap",
+ "clap2man",
  "color-eyre",
  "env_logger",
  "futures",

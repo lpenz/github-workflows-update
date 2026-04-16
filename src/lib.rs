@@ -19,6 +19,7 @@
 //!   - [`proxy`]: a proxy [`proxy::Server`] that makes async
 //!     requests and caches the results.
 
+pub mod cli;
 pub mod cmd;
 pub mod error;
 pub mod processor;

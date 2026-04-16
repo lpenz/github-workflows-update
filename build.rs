@@ -2,61 +2,25 @@
 // This file is subject to the terms and conditions defined in
 // file 'LICENSE', which is part of this source code package.
 
-use color_eyre::{Result, eyre::eyre};
-use man::prelude::*;
+use clap::CommandFactory;
+use color_eyre::{Result, eyre::Context, eyre::eyre};
 use std::env;
 use std::fs::{self, File};
 use std::io::Write;
 use std::path;
 
+include!("src/cli.rs");
+
 fn generate_man_page<P: AsRef<path::Path>>(outdir: P) -> Result<()> {
     let outdir = outdir.as_ref();
     let man_path = outdir.join("github-workflows-update.1");
-    let manpage = Manual::new("github-workflows-update")
-        .about("Check github workflows for actions that can be updated")
-        .author(Author::new("Leandro Lisboa Penz").email("lpenz@lpenz.org"))
-        .flag(
-            Flag::new()
-                .short("-n")
-                .long("--dry-run")
-                .help("Don't update the workflows, just print what would be done"),
-        )
-        .option(
-            Opt::new("output-format")
-                .short("-f")
-                .long("--output-format")
-                .default_value("standard")
-                .help(
-                    "Output format for the outdated action messages; \
-                       one of \"standard\" or \"github-warning\"",
-                ),
-        )
-        .flag(
-            Flag::new()
-                .long("--error-on-outdated")
-                .help("Return error if any outdated actions are found"),
-        )
-        .flag(
-            Flag::new()
-                .short("-h")
-                .long("--help")
-                .help("Prints help information"),
-        )
-        .flag(
-            Flag::new()
-                .short("-V")
-                .long("--version")
-                .help("Prints version information"),
-        )
-        .arg(Arg::new("COMMAND"))
-        .arg(Arg::new("[ ARGS ]"))
-        .description(
-            "github-workflows-update reads all github workflow and checks the latest
-available versions of all github actions and workflow dispatches used, showing
-which ones can be updated and optionally updating them automatically.",
-        )
+    let cmd = Cli::command();
+    let manual: man::Manual = clap2man::Manual::try_from(&cmd)
+        .wrap_err("error converting clap command to manual")?
+        .into();
+    let manpage = manual
         .example(
-            Example::new()
+            man::prelude::Example::new()
                 .text(
                     "Update all actions used in all github workflows \
                        under the current repository",
@@ -64,7 +28,7 @@ which ones can be updated and optionally updating them automatically.",
                 .command("github-workflows-update"),
         )
         .example(
-            Example::new()
+            man::prelude::Example::new()
                 .text("Show outdated actions without updating them")
                 .command("github-workflows-update -n"),
         )
@@ -74,11 +38,8 @@ which ones can be updated and optionally updating them automatically.",
 }
 
 fn main() -> Result<()> {
-    let mut outdir = path::PathBuf::from(
-        env::var_os("OUT_DIR").ok_or_else(|| eyre!("error getting OUT_DIR"))?,
-    );
-    fs::create_dir_all(&outdir)?;
-    generate_man_page(&outdir)?;
+    let mut outdir =
+        path::PathBuf::from(env::var_os("OUT_DIR").ok_or_else(|| eyre!("error getting OUT_DIR"))?);
     // build/github-workflows-update-*/out
     outdir.pop();
     // build/github-workflows-update-*
@@ -87,6 +48,9 @@ fn main() -> Result<()> {
     outdir.pop();
     // .
     // (either target/release or target/build)
+
+    fs::create_dir_all(&outdir)?;
     generate_man_page(&outdir)?;
+
     Ok(())
 }

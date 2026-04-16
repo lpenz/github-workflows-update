@@ -10,7 +10,7 @@ use tracing::Level;
 use tracing::event;
 use tracing::instrument;
 
-use crate::cmd::OutputFormat;
+use crate::cli::OutputFormat;
 use crate::proxy;
 use crate::workflow::Workflow;
 

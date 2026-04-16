@@ -11,36 +11,14 @@ use tokio_stream::wrappers::ReadDirStream;
 use tracing::Level;
 use tracing::event;
 
-use clap::Parser;
-use clap::ValueEnum;
-
+use crate::cli::Cli;
+use crate::cli::OutputFormat;
 use crate::proxy;
-
-#[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
-pub struct Args {
-    /// Don't update the workflows, just print what would be done
-    #[clap(short = 'n', long = "dry-run")]
-    pub dryrun: bool,
-    /// Output format for the outdated action messages
-    #[clap(short = 'f', long, value_enum, value_parser)]
-    pub output_format: Option<OutputFormat>,
-    /// Return error if any outdated actions are found
-    #[clap(long)]
-    pub error_on_outdated: bool,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Default, Debug)]
-pub enum OutputFormat {
-    #[default]
-    Standard,
-    /// Generate messages as github action warnings
-    GithubWarning,
-}
+use clap::Parser;
 
 #[tokio::main]
 pub async fn main() -> Result<()> {
-    let args = Args::parse();
+    let args = Cli::parse();
     env_logger::init();
     let proxy_server = proxy::Server::new();
     let futures = ReadDirStream::new(tokio::fs::read_dir(".github/workflows").await?)

@@ -32,6 +32,8 @@ tracing = { version = "0.1.44", features = ["log"] }
 url = "2.5.8"
 
 [build-dependencies]
+clap = { version = "4.6.0", features = ["derive"] }
+clap2man = "0.1.1"
 color-eyre = "0.6.3"
 man = "0.3.0"
 
