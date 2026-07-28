@@ -46,7 +46,7 @@ mod tests {
 
     #[test]
     fn test_parse_args() {
-        let args = Cli::parse_from(&["test", "-n", "-f", "github-warning", "--error-on-outdated"]);
+        let args = Cli::parse_from(["test", "-n", "-f", "github-warning", "--error-on-outdated"]);
         assert!(args.dryrun);
         assert_eq!(args.output_format, Some(OutputFormat::GithubWarning));
         assert!(args.error_on_outdated);
