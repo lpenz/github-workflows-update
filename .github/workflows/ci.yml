@@ -55,5 +55,5 @@ jobs:
       - uses: docker/build-push-action@v7.4.0
         with:
           push: ${{ steps.version.outputs.version_docker_ci != 'null' }}
-          tags: ${{ github.repository }}:${{ steps.version.outputs.version_docker_ci
-            }}
+          tags: ${{ github.repository }}:${{
+            steps.version.outputs.version_docker_ci }}

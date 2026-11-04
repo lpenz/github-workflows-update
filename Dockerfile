@@ -8,6 +8,9 @@ WORKDIR /src
 COPY Cargo.* ./
 COPY src ./src
 COPY build.rs ./
+# Package versions are not pinned so that security updates from the pinned
+# Debian release are picked up automatically.
+# hadolint ignore=DL3008
 RUN set -e -x; \
     apt-get update; \
     apt-get install -y --no-install-recommends libssl-dev pkg-config; \
@@ -15,8 +18,10 @@ RUN set -e -x; \
 
 FROM docker.io/debian:bookworm-slim
 ENV DEBIAN_FRONTEND=noninteractive
+# hadolint ignore=DL3008
 RUN set -e -x; \
     apt-get update; \
-    apt-get install -y --no-install-recommends ca-certificates
+    apt-get install -y --no-install-recommends ca-certificates; \
+    rm -rf /var/lib/apt/lists/*
 COPY --from=build /src/target/release/github-workflows-update /usr/local/bin/
 CMD ["/usr/local/bin/github-workflows-update", "-n", "--output-format", "github-warning", "--error-on-outdated"]
