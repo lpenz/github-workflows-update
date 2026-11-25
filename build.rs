@@ -41,17 +41,24 @@ fn generate_man_page<P: AsRef<path::Path>>(outdir: P) -> Result<()> {
     Ok(())
 }
 
+/// Return the profile directory (e.g. `target/release`) that contains OUT_DIR.
+///
+/// Cargo no longer adds a hash suffix to the build script directory, so its
+/// depth is not stable. Find it by walking up from OUT_DIR instead of popping
+/// a fixed number of components.
+fn profile_dir(outdir: &path::Path, profile: &str) -> Result<path::PathBuf> {
+    outdir
+        .ancestors()
+        .find(|dir| dir.file_name().is_some_and(|name| name == profile))
+        .map(|dir| dir.to_path_buf())
+        .ok_or_else(|| eyre!("could not find {profile:?} directory in OUT_DIR {outdir:?}"))
+}
+
 fn main() -> Result<()> {
-    let mut outdir =
+    let outdir =
         path::PathBuf::from(env::var_os("OUT_DIR").ok_or_else(|| eyre!("error getting OUT_DIR"))?);
-    // build/github-workflows-update-*/out
-    outdir.pop();
-    // build/github-workflows-update-*
-    outdir.pop();
-    // build
-    outdir.pop();
-    // .
-    // (either target/release or target/build)
+    // Generate assets next to the binary, where the packaging metadata expects them.
+    let outdir = profile_dir(&outdir, &env::var("PROFILE")?)?;
 
     fs::create_dir_all(&outdir)?;
     generate_man_page(&outdir)?;
